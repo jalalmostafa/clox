@@ -1,3 +1,10 @@
+# CUSTOM IGNORES
+
+build
+
+
+# C IGNORES
+
 # Prerequisites
 *.d
 
@@ -51,6 +58,8 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# AUTOTOOLS IGNORES
+
 # http://www.gnu.org/software/automake
 
 Makefile.in
@@ -93,3 +102,14 @@ m4/ltsugar.m4
 m4/ltversion.m4
 m4/lt~obsolete.m4
 autom4te.cache
+
+# CMAKE IGNORES
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
