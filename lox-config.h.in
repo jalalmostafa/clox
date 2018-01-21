@@ -1,0 +1,7 @@
+#ifndef LOX_CONFIG_H
+#define LOX_CONFIG_H
+
+#cmakedefine VERSION "@VERSION@"
+#cmakedefine DEBUG "@DEBUG@"
+
+#endif
