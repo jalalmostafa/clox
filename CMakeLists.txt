@@ -18,11 +18,6 @@ set (
 	"${CMAKE_SOURCE_DIR}/build/bin"
 )
 
-set (
-	PROJECT_SOURCE_DIR
-	"src/"
-)
-
 if (CMAKE_BUILD_TYPE EQUAL "DEBUG" OR NOT DEFINED(CMAKE_BUILD_TYPE))
 	set (
 		DEBUG
@@ -36,6 +31,11 @@ configure_file (
 	@ONLY
 )
 
-include_directories ("${PROJECT_SOURCE_DIR}")
+include_directories ("${PROJECT_SOURCE_DIR}/src/")
 include_directories ("${CMAKE_BINARY_DIR}")
-add_executable(lox "${PROJECT_SOURCE_DIR}/main.c")
+file(GLOB LOX_SRC
+	"${PROJECT_SOURCE_DIR}/src/*.h"
+	"${PROJECT_SOURCE_DIR}/src/*.c"
+)
+
+add_executable(lox ${LOX_SRC})
