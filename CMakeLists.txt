@@ -33,7 +33,7 @@ configure_file (
 
 include_directories ("${PROJECT_SOURCE_DIR}/src/")
 include_directories ("${CMAKE_BINARY_DIR}")
-file(GLOB LOX_SRC
+file(GLOB_RECURSE LOX_SRC
 	"${PROJECT_SOURCE_DIR}/src/*.h"
 	"${PROJECT_SOURCE_DIR}/src/*.c"
 )
