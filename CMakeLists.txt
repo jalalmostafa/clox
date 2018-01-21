@@ -38,4 +38,9 @@ file(GLOB LOX_SRC
 	"${PROJECT_SOURCE_DIR}/src/*.c"
 )
 
+if(WIN32)
+	if(MSVC)
+		ADD_DEFINITIONS(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS)
+	endif()
+endif()
 add_executable(lox ${LOX_SRC})
