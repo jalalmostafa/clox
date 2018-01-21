@@ -2,13 +2,14 @@
 #include "mem.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 char* readLine(const char* prompt)
 {
-	int size = sizeof(char) * LINEBUFSIZE;
-    char* line = alloc(size);
-	memset(line, 0, size);
+    int size = sizeof(char) * LINEBUFSIZE;
+    char* line = (char*)alloc(size);
+    memset((void*)line, 0, size);
     printf("%s", prompt);
-    gets(line);
+    fgets(line, size, stdin);
     return line;
 }
