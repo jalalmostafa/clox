@@ -3,6 +3,7 @@
 #include "includes/lox-config.h"
 #include "mem.h"
 #include "readline.h"
+#include "tokenizer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,7 +11,7 @@
 void usage(char* name);
 void header(char* name);
 char* readFile(char* filepath, char* buf);
-void run(char* code);
+void run(const char* code);
 
 int main(int argc, char* argv[])
 {
@@ -81,10 +82,11 @@ char* readFile(char* filepath, char* buf)
     return fread(buf, BUFSIZE, 1, fp) && !fclose(fp) ? buf : NULL;
 }
 
-void run(char* code)
+void run(const char* code)
 {
 #ifdef DEBUG
-    puts("Input String: ");
     puts(code);
 #endif
+    Tokenization toknz = toknzr(code);
+    toknzr_destroy(toknz);
 }
