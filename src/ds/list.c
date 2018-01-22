@@ -29,6 +29,11 @@ Node* list_push(List* list, void* data)
     if (last != NULL) {
         last->next = newNode;
     }
+
+    if (list->head == NULL) {
+        list->head = newNode;
+    }
+
     list->last = newNode;
     list->count++;
     return newNode;
@@ -96,12 +101,15 @@ int list_remove_at(List* list, unsigned int index)
 
 void list_clear(List* list)
 {
+    Node* n = NULL, *prev = NULL;
     if (list == NULL) {
         return;
     }
-
-    for (Node* n = list->head; n->next != NULL; n = n->next) {
+    n = list->last;
+    while (n != NULL) {
+        prev = n->prev;
         fr(n);
+        n = prev;
     }
     list->count = 0;
     list->head = NULL;
@@ -128,7 +136,7 @@ Node* list_at(List* list, unsigned int index)
     }
     int idx = 0;
     Node* n = list->head;
-    for (; n->next != NULL && idx != index; n = n->next) {
+    for (; n != NULL && idx != index; n = n->next) {
         idx++;
     }
     return n;
@@ -145,10 +153,10 @@ void list_destroy(List* list)
 
 void list_foreach(List* list, Iterator iter)
 {
-    if (list == NULL) {
+    if (list == NULL || list->head != NULL) {
         return;
     }
-    for (Node* n = list->head; n->next != NULL; n = n->next) {
+    for (Node* n = list->head; n != NULL; n = n->next) {
         iter(n->data);
     }
 }
