@@ -31,14 +31,14 @@ int main(int argc, char* argv[])
     } else {
         header(name);
         if (argc == 2) {
-            char* ret = readFile(argv[1], buf);
+            char* ret = read_file(argv[1], buf);
             if (ret == NULL) {
                 except("Exceeded Maximum File Size");
             }
             run(buf);
         } else {
             for (;;) {
-                line = readLine("> ");
+                line = read_line("> ");
                 run(line);
                 fr(line);
             }
@@ -63,16 +63,17 @@ void header(char* name)
     }
 }
 
-char* readFile(char* filepath, char* buf)
+char* read_file(char* filepath, char* buf)
 {
+    int length = 0;
     FILE* fp = fopen(filepath, "r");
     if (fp == NULL) {
         return NULL;
     }
 
     if (!fseek(fp, SEEK_SET, SEEK_END)) {
-        int len = ftell(fp);
-        if (!len) {
+        length = ftell(fp);
+        if (!length) {
             return NULL;
         }
 

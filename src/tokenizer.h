@@ -57,7 +57,6 @@ typedef struct tokenization {
 
 typedef struct token {
     TokenType type;
-    char* luxeme;
     char* literal;
     int column;
     int line;

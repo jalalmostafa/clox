@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-char* readLine(const char* prompt)
+char* read_line(const char* prompt)
 {
     int size = sizeof(char) * LINEBUFSIZE;
     char* line = (char*)alloc(size);
