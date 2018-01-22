@@ -1,31 +1,31 @@
 #include "list.h"
 #include "../mem.h"
 
-static Node node(void* data)
+static Node* node(void* data)
 {
-    Node node = (Node) alloc(sizeof(Node));
+    Node* node = (Node*)alloc(sizeof(Node));
     node->data = data;
     node->next = NULL;
     node->prev = NULL;
     return node;
 }
 
-List list()
+List* list()
 {
-    List list = alloc(sizeof(List));
+    List* list = (List*)alloc(sizeof(List));
     list->head = NULL;
     list->last = NULL;
     list->count = 0;
     return list;
 }
 
-Node list_push(List list, void* data)
+Node* list_push(List* list, void* data)
 {
     if (list == NULL) {
         return NULL;
     }
-    Node newNode = node(data);
-    Node last = list_last(list);
+    Node* newNode = node(data);
+    Node* last = list_last(list);
     if (last != NULL) {
         last->next = newNode;
     }
@@ -34,7 +34,7 @@ Node list_push(List list, void* data)
     return newNode;
 }
 
-Node list_insert(List list, void* data, int index)
+Node* list_insert(List* list, void* data, int index)
 {
     if (list == NULL) {
         return NULL;
@@ -44,7 +44,7 @@ Node list_insert(List list, void* data, int index)
         return list_push(list, data);
     }
 
-    Node newNode = node(data);
+    Node* newNode = node(data);
     list->count++;
     if (index == 0) {
         newNode->next = list->head;
@@ -53,7 +53,7 @@ Node list_insert(List list, void* data, int index)
         return newNode;
     }
 
-    Node n = list_at(list, index);
+    Node* n = list_at(list, index);
     if (n == NULL) {
         fr(newNode);
         return NULL;
@@ -65,9 +65,9 @@ Node list_insert(List list, void* data, int index)
     return newNode;
 }
 
-int list_remove(List list, Node node)
+int list_remove(List* list, Node* node)
 {
-    Node n = NULL;
+    Node* n = NULL;
     for (n = list->head; n->next != NULL && n != node; n = n->next) {
     }
 
@@ -82,9 +82,9 @@ int list_remove(List list, Node node)
     return 1;
 }
 
-int list_remove_at(List list, unsigned int index)
+int list_remove_at(List* list, unsigned int index)
 {
-    Node n = list_at(list, index);
+    Node* n = list_at(list, index);
     if (n == NULL) {
         return 0;
     }
@@ -94,13 +94,13 @@ int list_remove_at(List list, unsigned int index)
     return 1;
 }
 
-void list_clear(List list)
+void list_clear(List* list)
 {
     if (list == NULL) {
         return;
     }
 
-    for (Node n = list->head; n->next != NULL; n = n->next) {
+    for (Node* n = list->head; n->next != NULL; n = n->next) {
         fr(n);
     }
     list->count = 0;
@@ -108,12 +108,12 @@ void list_clear(List list)
     list->last = NULL;
 }
 
-Node list_last(List list)
+Node* list_last(List* list)
 {
     return list->last;
 }
 
-Node list_at(List list, unsigned int index)
+Node* list_at(List* list, unsigned int index)
 {
     if (list == NULL) {
         return NULL;
@@ -127,14 +127,14 @@ Node list_at(List list, unsigned int index)
         return list->last;
     }
     int idx = 0;
-    Node n = list->head;
+    Node* n = list->head;
     for (; n->next != NULL && idx != index; n = n->next) {
         idx++;
     }
     return n;
 }
 
-void list_destroy(List list)
+void list_destroy(List* list)
 {
     if (list == NULL) {
         return;
@@ -143,12 +143,12 @@ void list_destroy(List list)
     fr(list);
 }
 
-void list_foreach(List list, Iterator iter)
+void list_foreach(List* list, Iterator iter)
 {
     if (list == NULL) {
         return;
     }
-    for (Node n = list->head; n->next != NULL; n = n->next) {
+    for (Node* n = list->head; n->next != NULL; n = n->next) {
         iter(n->data);
     }
 }
