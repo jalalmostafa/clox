@@ -87,6 +87,6 @@ void run(const char* code)
 #ifdef DEBUG
     puts(code);
 #endif
-    Tokenization toknz = toknzr(code);
+    Tokenization* toknz = toknzr(code);
     toknzr_destroy(toknz);
 }
