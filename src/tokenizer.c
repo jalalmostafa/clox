@@ -58,6 +58,21 @@ static int match_next(const char* code, char next, int length, int* current)
     return 1;
 }
 
+static char* read_to(const char* code, int codeLength, int* current, char to)
+{
+    char* literal = NULL;
+    int start = *current, length = 1;
+    while ((start + length) != codeLength && code[start + length] != to) {
+        length++;
+    }
+    ++length;
+    *current += length;
+    literal = (char*)alloc(length);
+    strncpy(literal, &code[start], length - 1);
+    literal[length - 1] = '\0';
+    return literal;
+}
+
 Tokenization* toknzr(const char* code)
 {
     char* literal = NULL;
@@ -124,6 +139,11 @@ Tokenization* toknzr(const char* code)
             } else {
                 list_push(toknz->values, token_simple(SLASH, line, current));
             }
+            break;
+        case '"':
+            literal = read_to(code, length, &current, '"');
+            list_push(toknz->values, token(STRING, literal, line, current));
+            fr(literal);
             break;
         case ' ':
         case '\r':
