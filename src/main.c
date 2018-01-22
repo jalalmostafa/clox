@@ -10,7 +10,7 @@
 
 void usage(char* name);
 void header(char* name);
-char* readFile(char* filepath, char* buf);
+char* read_file(char* filepath, char* buf);
 void run(const char* code);
 
 int main(int argc, char* argv[])
