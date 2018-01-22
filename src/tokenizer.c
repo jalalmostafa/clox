@@ -98,9 +98,6 @@ Tokenization* toknzr(const char* code)
         case ';':
             list_push(toknz->values, token_simple(SEMICOLON, ";", line, current));
             break;
-        case '/':
-            list_push(toknz->values, token_simple(SLASH, "/", line, current));
-            break;
         case '*':
             list_push(toknz->values, token_simple(STAR, "*", line, current));
             break;
@@ -119,6 +116,23 @@ Tokenization* toknzr(const char* code)
         case '<':
             type = match_next(code, '=', len, &current) ? LESS_EQUAL : LESS;
             list_push(toknz->values, token_simple(type, type != LESS ? "<=" : "<", line, current));
+            break;
+        case '/':
+            type = match_next(code, '/', len, &current) ? EOF : SLASH;
+            if (type == EOF) {
+                do {
+                    current++;
+                } while (current != len && code[current] != '\n');
+            } else {
+                list_push(toknz->values, token_simple(SLASH, "/", line, current));
+            }
+            break;
+        case ' ':
+        case '\r':
+        case '\t':
+            break;
+        case '\n':
+            line++;
             break;
         default:
             toknzr_error(line, current, "");
