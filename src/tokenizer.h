@@ -67,4 +67,23 @@ Tokenization* toknzr(const char* code);
 void toknzr_destroy(Tokenization* toknz);
 
 #define IS_AT_END(x, codeLength) ((x) >= (codeLength))
+#define IS_ALPHA_NUMERIC(x) (isalpha((x)) || isdigit((x) || (x) == '_'))
+
+#define AND_KEY "and"
+#define CLASS_KEY "class"
+#define ELSE_KEY "else"
+#define FALSE_KEY "false"
+#define FUN_KEY "fun"
+#define FOR_KEY "for"
+#define IF_KEY "if"
+#define NIL_KEY "nil"
+#define OR_KEY "or"
+#define PRINT_KEY "print"
+#define RETURN_KEY "return"
+#define SUPER_KEY "super"
+#define THIS_KEY "this"
+#define TRUE_KEY "true"
+#define VAR_KEY "var"
+#define WHILE_KEY "while"
+
 #endif

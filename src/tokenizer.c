@@ -11,18 +11,18 @@
 static Token* token(TokenType type, char* literal, int line, int column)
 {
     int length = 0;
-    Token* token = (Token*)alloc(sizeof(Token));
-    token->type = type;
+    Token* tokn = (Token*)alloc(sizeof(Token));
+    tokn->type = type;
     if (literal == NULL) {
-        token->literal = NULL;
+        tokn->literal = NULL;
     } else {
         length = strlen(literal) + 1;
-        token->literal = (char*)alloc(length);
-        strncpy(token->literal, literal, length);
+        tokn->literal = (char*)alloc(length);
+        strncpy(tokn->literal, literal, length);
     }
-    token->line = line;
-    token->column = column;
-    return token;
+    tokn->line = line;
+    tokn->column = column;
+    return tokn;
 }
 
 static Token* token_simple(TokenType type, int line, int column)
@@ -32,9 +32,9 @@ static Token* token_simple(TokenType type, int line, int column)
 
 static void token_destroy(void* data)
 {
-    Token* token = (Token*)data;
-    fr(token->literal);
-    fr(token);
+    Token* tokn = (Token*)data;
+    fr(tokn->literal);
+    fr(tokn);
 }
 
 static void toknzr_error(int line, int column, char c)
@@ -79,6 +79,93 @@ static char* read_between(const char* code, int codeLength, int* current, int* l
     literal[length - 1] = '\0';
     return literal;
 }
+#ifdef DEBUG
+static char* to_type_string(TokenType type)
+{
+    switch (type) {
+    case LEFT_PAREN:
+        return "LEFT_PAREN";
+    case RIGHT_PAREN:
+        return "RIGHT_PAREN";
+    case LEFT_BRACE:
+        return "LEFT_BRACE";
+    case RIGHT_BRACE:
+        return "RIGHT_BRACE";
+    case COMMA:
+        return "COMMA";
+    case DOT:
+        return "DOT";
+    case MINUS:
+        return "MINUS";
+    case PLUS:
+        return "PLUS";
+    case SEMICOLON:
+        return "SEMICOLON";
+    case SLASH:
+        return "SLASH";
+    case STAR:
+        return "STAR";
+    case BANG:
+        return "BANG";
+    case BANG_EQUAL:
+        return "BANG_EQUAL";
+    case EQUAL:
+        return "EQUAL";
+    case EQUAL_EQUAL:
+        return "EQUAL_EQUAL";
+    case GREATER:
+        return "GREATER";
+    case GREATER_EQUAL:
+        return "GREATER_EQUAL";
+    case LESS:
+        return "LESS";
+    case LESS_EQUAL:
+        return "LESS_EQUAL";
+    case IDENTIFIER:
+        return "IDENTIFIER";
+    case STRING:
+        return "STRING";
+    case NUMBER:
+        return "NUMBER";
+    case AND:
+        return AND_KEY;
+    case CLASS:
+        return CLASS_KEY;
+    case ELSE:
+        return ELSE_KEY;
+    case FALSE:
+        return FALSE_KEY;
+    case FUN:
+        return FUN_KEY;
+    case FOR:
+        return FOR_KEY;
+    case IF:
+        return IF_KEY;
+    case NIL:
+        return NIL_KEY;
+    case OR:
+        return OR_KEY;
+    case PRINT:
+        return PRINT_KEY;
+    case RETURN:
+        return RETURN_KEY;
+    case SUPER:
+        return SUPER_KEY;
+    case THIS:
+        return THIS_KEY;
+    case TRUE:
+        return TRUE_KEY;
+    case VAR:
+        return VAR_KEY;
+    case WHILE:
+        return WHILE_KEY;
+    case EOF:
+        return "EOF";
+    default:
+        return "Unknown";
+    }
+}
+#endif
 
 static char* read_number(const char* code, int codeLength, int* current)
 {
@@ -99,9 +186,24 @@ static char* read_number(const char* code, int codeLength, int* current)
     return literal;
 }
 
+static char* read_other(const char* code, int codeLength, int* current)
+{
+    char* literal = NULL;
+    int start = *current, length = 0;
+    do {
+        (*current)++;
+    } while (!IS_AT_END(*current, codeLength) && IS_ALPHA_NUMERIC(code[*current]));
+    length = *current - start + 1;
+    literal = (char*)alloc(length);
+    memcpy(literal, &(code[start]), length);
+    literal[length - 1] = '\0';
+    return literal;
+}
+
 Tokenization* toknzr(const char* code)
 {
     char* literal = NULL;
+    Token* tokn = NULL;
     TokenType type = EOF;
     int length = strlen(code), current = 0, line = 1;
     Tokenization* toknz = (Tokenization*)alloc(sizeof(Tokenization));
@@ -111,50 +213,50 @@ Tokenization* toknzr(const char* code)
         char c = code[current];
         switch (c) {
         case '(':
-            list_push(toknz->values, token_simple(LEFT_PAREN, line, current));
+            tokn = token_simple(LEFT_PAREN, line, current);
             break;
         case ')':
-            list_push(toknz->values, token_simple(RIGHT_PAREN, line, current));
+            tokn = token_simple(RIGHT_PAREN, line, current);
             break;
         case '{':
-            list_push(toknz->values, token_simple(LEFT_BRACE, line, current));
+            tokn = token_simple(LEFT_BRACE, line, current);
             break;
         case '}':
-            list_push(toknz->values, token_simple(RIGHT_BRACE, line, current));
+            tokn = token_simple(RIGHT_BRACE, line, current);
             break;
         case ',':
-            list_push(toknz->values, token_simple(COMMA, line, current));
+            tokn = token_simple(COMMA, line, current);
             break;
         case '.':
-            list_push(toknz->values, token_simple(DOT, line, current));
+            tokn = token_simple(DOT, line, current);
             break;
         case '-':
-            list_push(toknz->values, token_simple(MINUS, line, current));
+            tokn = token_simple(MINUS, line, current);
             break;
         case '+':
-            list_push(toknz->values, token_simple(PLUS, line, current));
+            tokn = token_simple(PLUS, line, current);
             break;
         case ';':
-            list_push(toknz->values, token_simple(SEMICOLON, line, current));
+            tokn = token_simple(SEMICOLON, line, current);
             break;
         case '*':
-            list_push(toknz->values, token_simple(STAR, line, current));
+            tokn = token_simple(STAR, line, current);
             break;
         case '!':
             type = match_next(code, '=', length, &current) ? BANG_EQUAL : BANG;
-            list_push(toknz->values, token_simple(type, line, current));
+            tokn = token_simple(type, line, current);
             break;
         case '=':
             type = match_next(code, '=', length, &current) ? EQUAL_EQUAL : EQUAL;
-            list_push(toknz->values, token_simple(type, line, current));
+            tokn = token_simple(type, line, current);
             break;
         case '>':
             type = match_next(code, '=', length, &current) ? GREATER_EQUAL : GREATER;
-            list_push(toknz->values, token_simple(type, line, current));
+            tokn = token_simple(type, line, current);
             break;
         case '<':
             type = match_next(code, '=', length, &current) ? LESS_EQUAL : LESS;
-            list_push(toknz->values, token_simple(type, line, current));
+            tokn = token_simple(type, line, current);
             break;
         case '/':
             type = match_next(code, '/', length, &current) ? EOF : SLASH;
@@ -163,13 +265,13 @@ Tokenization* toknzr(const char* code)
                     current++;
                 } while (current != length && code[current] != '\n');
             } else {
-                list_push(toknz->values, token_simple(SLASH, line, current));
+                tokn = token_simple(SLASH, line, current);
             }
             break;
         case '"':
             literal = read_between(code, length, &current, &line, '"');
             if (literal != NULL) {
-                list_push(toknz->values, token(STRING, literal, line, current));
+                tokn = token(STRING, literal, line, current);
             }
             break;
         case ' ':
@@ -182,7 +284,46 @@ Tokenization* toknzr(const char* code)
         default:
             if (isdigit(c)) {
                 literal = read_number(code, length, &current);
-                list_push(toknz->values, token(NUMBER, literal, line, current));
+                tokn = token(NUMBER, literal, line, current);
+            } else if (isalpha(c)) {
+                literal = read_other(code, length, &current);
+                if (strcmp(literal, AND_KEY) == 0) {
+                    tokn = token_simple(AND, line, current);
+                } else if (strcmp(literal, CLASS_KEY) == 0) {
+                    tokn = token_simple(CLASS, line, current);
+                } else if (strcmp(literal, ELSE_KEY) == 0) {
+                    tokn = token_simple(ELSE, line, current);
+                } else if (strcmp(literal, FALSE_KEY) == 0) {
+                    tokn = token_simple(FALSE, line, current);
+                } else if (strcmp(literal, FUN_KEY) == 0) {
+                    tokn = token_simple(FUN, line, current);
+                } else if (strcmp(literal, FOR_KEY) == 0) {
+                    tokn = token_simple(FOR, line, current);
+                } else if (strcmp(literal, IF_KEY) == 0) {
+                    tokn = token_simple(IF, line, current);
+                } else if (strcmp(literal, NIL_KEY) == 0) {
+                    tokn = token_simple(NIL, line, current);
+                } else if (strcmp(literal, OR_KEY) == 0) {
+                    tokn = token_simple(OR, line, current);
+                } else if (strcmp(literal, PRINT_KEY) == 0) {
+                    tokn = token_simple(PRINT, line, current);
+                } else if (strcmp(literal, RETURN_KEY) == 0) {
+                    tokn = token_simple(RETURN, line, current);
+                } else if (strcmp(literal, SUPER_KEY) == 0) {
+                    tokn = token_simple(SUPER, line, current);
+                } else if (strcmp(literal, THIS_KEY) == 0) {
+                    tokn = token_simple(THIS, line, current);
+                } else if (strcmp(literal, THIS_KEY) == 0) {
+                    tokn = token_simple(THIS, line, current);
+                } else if (strcmp(literal, TRUE_KEY) == 0) {
+                    tokn = token_simple(TRUE, line, current);
+                } else if (strcmp(literal, VAR_KEY) == 0) {
+                    tokn = token_simple(VAR, line, current);
+                } else if (strcmp(literal, WHILE_KEY) == 0) {
+                    tokn = token_simple(WHILE, line, current);
+                } else {
+                    tokn = token_simple(IDENTIFIER, line, current);
+                }
             } else {
                 toknzr_error(line, current, c);
             }
@@ -192,10 +333,12 @@ Tokenization* toknzr(const char* code)
         if (literal != NULL) {
             printf("Literal: %s\n", literal);
         }
+        printf("Type: %s\n", to_type_string(tokn->type));
 #endif
         fr(literal);
         literal = NULL;
         current++;
+        list_push(toknz->values, tokn);
     }
     toknz->lines = line;
     list_push(toknz->values, token_simple(EOF, line, current));
