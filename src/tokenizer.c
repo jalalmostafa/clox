@@ -69,9 +69,32 @@ static char* read_between(const char* code, int codeLength, int* current, int* l
         }
         (*current)++;
     } while (code[*current] != to && !IS_AT_END(*current, codeLength));
+    if (IS_AT_END(*current, codeLength)) {
+        toknzr_error(*line, *current, code[*current]);
+        return NULL;
+    }
     length = *current - start;
     literal = (char*)alloc(length);
     memcpy(literal, &(code[start + 1]), length);
+    literal[length - 1] = '\0';
+    return literal;
+}
+
+static char* read_number(const char* code, int codeLength, int* current)
+{
+    char* literal = NULL;
+    int start = *current, length = 0;
+    do {
+        (*current)++;
+    } while (!IS_AT_END(*current, codeLength) && isdigit(code[*current]));
+    if (code[*current] == '.' && isdigit(code[(*current) + 1])) {
+        do {
+            (*current)++;
+        } while (!IS_AT_END(*current, codeLength) && isdigit(code[*current]));
+    }
+    length = *current - start + 1;
+    literal = (char*)alloc(length);
+    memcpy(literal, &(code[start]), length);
     literal[length - 1] = '\0';
     return literal;
 }
@@ -145,7 +168,9 @@ Tokenization* toknzr(const char* code)
             break;
         case '"':
             literal = read_between(code, length, &current, &line, '"');
-            list_push(toknz->values, token(STRING, literal, line, current));
+            if (literal != NULL) {
+                list_push(toknz->values, token(STRING, literal, line, current));
+            }
             break;
         case ' ':
         case '\r':
@@ -155,8 +180,9 @@ Tokenization* toknzr(const char* code)
             line++;
             break;
         default:
-            toknzr_error(line, current, c);
             if (isdigit(c)) {
+                literal = read_number(code, length, &current);
+                list_push(toknz->values, token(NUMBER, literal, line, current));
             } else {
                 toknzr_error(line, current, c);
             }
