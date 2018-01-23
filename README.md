@@ -18,6 +18,8 @@ C-lox source code follows [Webkit Coding Convention](https://webkit.org/code-sty
 | Debian   | `sudo apt install cmake make` |
 
 ```bash
+git clone https://github.com/jalalmostafa/c-lox.git
+cd c-lox/
 mkdir build && cd build
 cmake ..
 cmake --build .
