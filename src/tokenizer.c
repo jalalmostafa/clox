@@ -3,6 +3,7 @@
 #include "except.h"
 #include "global.h"
 #include "mem.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,17 +59,19 @@ static int match_next(const char* code, char next, int length, int* current)
     return 1;
 }
 
-static char* read_to(const char* code, int codeLength, int* current, char to)
+static char* read_between(const char* code, int codeLength, int* current, int* line, char to)
 {
     char* literal = NULL;
-    int start = *current, length = 1;
-    while ((start + length) != codeLength && code[start + length] != to) {
-        length++;
-    }
-    ++length;
-    *current += length;
+    int start = *current, length = 0;
+    do {
+        if (code[*current] == '\n') {
+            *line++;
+        }
+        (*current)++;
+    } while (code[*current] != to && !IS_AT_END(*current, codeLength));
+    length = *current - start;
     literal = (char*)alloc(length);
-    strncpy(literal, &code[start], length - 1);
+    memcpy(literal, &(code[start + 1]), length);
     literal[length - 1] = '\0';
     return literal;
 }
@@ -77,11 +80,11 @@ Tokenization* toknzr(const char* code)
 {
     char* literal = NULL;
     TokenType type = EOF;
-    int length = strlen(code), start = 0, current = 0, line = 1;
+    int length = strlen(code), current = 0, line = 1;
     Tokenization* toknz = (Tokenization*)alloc(sizeof(Tokenization));
     toknz->values = list();
-    while (current < length) {
-        start = current;
+    toknz->lines = 0;
+    while (!IS_AT_END(current, length)) {
         char c = code[current];
         switch (c) {
         case '(':
@@ -141,9 +144,8 @@ Tokenization* toknzr(const char* code)
             }
             break;
         case '"':
-            literal = read_to(code, length, &current, '"');
+            literal = read_between(code, length, &current, &line, '"');
             list_push(toknz->values, token(STRING, literal, line, current));
-            fr(literal);
             break;
         case ' ':
         case '\r':
@@ -154,11 +156,22 @@ Tokenization* toknzr(const char* code)
             break;
         default:
             toknzr_error(line, current, c);
+            if (isdigit(c)) {
+            } else {
+                toknzr_error(line, current, c);
+            }
             break;
         }
+#ifdef DEBUG
+        if (literal != NULL) {
+            printf("Literal: %s\n", literal);
+        }
+#endif
+        fr(literal);
         literal = NULL;
         current++;
     }
+    toknz->lines = line;
     list_push(toknz->values, token_simple(EOF, line, current));
     return toknz;
 }

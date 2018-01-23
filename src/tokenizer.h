@@ -53,6 +53,7 @@ typedef enum tokentype {
 
 typedef struct tokenization {
     List* values;
+    int lines;
 } Tokenization;
 
 typedef struct token {
@@ -64,4 +65,6 @@ typedef struct token {
 
 Tokenization* toknzr(const char* code);
 void toknzr_destroy(Tokenization* toknz);
+
+#define IS_AT_END(x, codeLength) ((x) >= (codeLength))
 #endif

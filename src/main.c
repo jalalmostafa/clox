@@ -1,6 +1,5 @@
 #include "except.h"
 #include "global.h"
-#include "includes/lox-config.h"
 #include "mem.h"
 #include "readline.h"
 #include "tokenizer.h"
@@ -85,9 +84,6 @@ char* read_file(char* filepath, char* buf)
 
 void run(const char* code)
 {
-#ifdef DEBUG
-    puts(code);
-#endif
     Tokenization* toknz = toknzr(code);
     toknzr_destroy(toknz);
 }
