@@ -12,10 +12,14 @@ C-lox source code follows [Webkit Coding Convention](https://webkit.org/code-sty
 
 ## Build
 
+In order to build and compile C-lox, you need to install `CMake` plus the toolchain of your choice (`MSBuild with MSVC++` or `make with gcc`).
+
 | Platform | Build Dependencies |
 | -------- | ------------------ |
-| Windows  | [CMake](https://cmake.org/) and MVC++ 15 |
-| Debian   | `sudo apt install cmake make` |
+| Windows  | [CMake](https://cmake.org/) |
+# | Debian   | `sudo apt install cmake make` |
+
+After you setup your `CMake` with your toolchain of choice, clone the repository and build the project as follows:
 
 ```bash
 git clone https://github.com/jalalmostafa/c-lox.git
@@ -25,8 +29,18 @@ cmake ..
 cmake --build .
 ```
 
-Check `bin` for binaries.
+In order to execute C-lox, check `/bin` folder in project directory for binaries.
+
+Build tests have been conducted as follows:
+
+* Windows x86_64 MSBuild and MSVC++ 15
+* Windows x86_64 make and gcc
+
 
 ## Download
 
 Download [lastest](https://github.com/jalalmostafa/c-lox/releases).
+
+## License
+
+C-Lox is can be freely distributed under the [MIT License](https://github.com/jalalmostafa/c-lox/blob/master/LICENSE)

@@ -1,7 +1,7 @@
 # CUSTOM IGNORES
 
 build
-
+bin
 
 # C IGNORES
 
