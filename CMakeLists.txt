@@ -26,7 +26,7 @@ if (CMAKE_BUILD_TYPE EQUAL "DEBUG" OR NOT DEFINED(CMAKE_BUILD_TYPE))
 endif()
 
 configure_file (
-	"include/lox-config.h.in"
+	"lox-config.h.in"
 	"${CMAKE_CURRENT_BINARY_DIR}/includes/lox-config.h"
 	@ONLY
 )
