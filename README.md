@@ -17,7 +17,6 @@ In order to build and compile C-lox, you need to install `CMake` plus the toolch
 | Platform | Build Dependencies |
 | -------- | ------------------ |
 | Windows  | [CMake](https://cmake.org/) |
-# | Debian   | `sudo apt install cmake make` |
 
 After you setup your `CMake` with your toolchain of choice, clone the repository and build the project as follows:
 
