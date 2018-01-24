@@ -10,12 +10,12 @@ set (
 
 set (
 	EXECUTABLE_OUTPUT_PATH
-	"${CMAKE_SOURCE_DIR}/build/bin"
+	"${CMAKE_SOURCE_DIR}/bin"
 )
 
 set (
 	LIBRARY_OUTPUT_PATH
-	"${CMAKE_SOURCE_DIR}/build/bin"
+	"${CMAKE_SOURCE_DIR}/bin"
 )
 
 if (CMAKE_BUILD_TYPE EQUAL "DEBUG" OR NOT DEFINED(CMAKE_BUILD_TYPE))
@@ -26,15 +26,16 @@ if (CMAKE_BUILD_TYPE EQUAL "DEBUG" OR NOT DEFINED(CMAKE_BUILD_TYPE))
 endif()
 
 configure_file (
-	"lox-config.h.in"
+	"include/lox-config.h.in"
 	"${CMAKE_CURRENT_BINARY_DIR}/includes/lox-config.h"
 	@ONLY
 )
 
-include_directories ("${PROJECT_SOURCE_DIR}/src/")
+include_directories ("${PROJECT_SOURCE_DIR}/include/")
+include_directories ("${PROJECT_SOURCE_DIR}/include/ds")
 include_directories ("${CMAKE_BINARY_DIR}")
 file(GLOB_RECURSE LOX_SRC
-	"${PROJECT_SOURCE_DIR}/src/*.h"
+	"${PROJECT_SOURCE_DIR}/include/*.h"
 	"${PROJECT_SOURCE_DIR}/src/*.c"
 )
 
