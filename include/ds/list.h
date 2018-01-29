@@ -15,6 +15,8 @@ typedef struct list {
 
 typedef void (*Iterator)(void* data);
 
+typedef int (*Predicate)(Node* n);
+
 List* list();
 Node* list_push(List* list, void* data);
 Node* list_insert(List* list, void* data, int index);
@@ -25,4 +27,6 @@ Node* list_last(List* list);
 Node* list_at(List* list, unsigned int index);
 void list_foreach(List* list, Iterator iter);
 void list_destroy(List* list);
+int list_any(List* list);
+
 #endif

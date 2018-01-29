@@ -1,5 +1,5 @@
-#include "list.h"
-#include "../mem.h"
+#include "ds/list.h"
+#include "mem.h"
 
 static Node* node(void* data)
 {
@@ -101,7 +101,7 @@ int list_remove_at(List* list, unsigned int index)
 
 void list_clear(List* list)
 {
-    Node* n = NULL, *prev = NULL;
+    Node *n = NULL, *prev = NULL;
     if (list == NULL) {
         return;
     }
@@ -123,6 +123,8 @@ Node* list_last(List* list)
 
 Node* list_at(List* list, unsigned int index)
 {
+    int idx = 0;
+    Node* n = NULL;
     if (list == NULL) {
         return NULL;
     }
@@ -134,8 +136,7 @@ Node* list_at(List* list, unsigned int index)
     if (index == list->count - 1) {
         return list->last;
     }
-    int idx = 0;
-    Node* n = list->head;
+    n = list->head;
     for (; n != NULL && idx != index; n = n->next) {
         idx++;
     }
@@ -153,10 +154,26 @@ void list_destroy(List* list)
 
 void list_foreach(List* list, Iterator iter)
 {
+    Node* n = NULL;
     if (list == NULL || list->head != NULL) {
         return;
     }
-    for (Node* n = list->head; n != NULL; n = n->next) {
+    for (n = list->head; n != NULL; n = n->next) {
         iter(n->data);
     }
+}
+
+int list_any(List* list, Predicate predicate)
+{
+    Node* n = NULL;
+    if (list == NULL) {
+        return 0;
+    }
+
+    for (n = list->head; n != NULL; n = n->next) {
+        if (predicate(n) > 0) {
+            return 1;
+        }
+    }
+    return 0;
 }
