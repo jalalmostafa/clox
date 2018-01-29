@@ -41,6 +41,7 @@ static void token_destroy(void* data)
 {
     Token* tokn = (Token*)data;
     fr(tokn->literal);
+    fr(tokn->lexeme);
     fr(tokn);
 }
 
