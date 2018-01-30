@@ -4,5 +4,4 @@
 
 #define LINEBUFSIZE 1024 * sizeof(char)
 #define BUFSIZE 10 * LINEBUFSIZE
-#define ARRLEN(x) (sizeof((x)) / sizeof((x[0])))
 #endif
