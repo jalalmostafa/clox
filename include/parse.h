@@ -39,7 +39,15 @@ typedef struct expression_literal {
 
 typedef void* (*Action)(void*);
 
+typedef struct expression_visitors {
+    Action visitBinary;
+    Action visitUnary;
+    Action visitLiteral;
+    Action visitGrouping;
+} ExpressionVisitor;
+
 Expr* parse(Tokenization* toknz);
+void accept(ExpressionVisitor vistor, Expr* expr);
 void destroy_expr(Expr* expr);
 
 #define END_OF_TOKENS(x) ((x) == EOF)

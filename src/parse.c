@@ -251,3 +251,21 @@ static void synchronize(Node** node)
         (*node) = (*node)->next;
     }
 }
+
+void accept(ExpressionVisitor visitor, Expr* expr)
+{
+    switch (expr->type) {
+    case LITERAL:
+        visitor.visitLiteral(expr->expr);
+        break;
+    case UNARY:
+        visitor.visitUnary(expr->expr);
+        break;
+    case BINARY:
+        visitor.visitBinary(expr->expr);
+        break;
+    case GROUPING:
+        visitor.visitGrouping(expr->expr);
+        break;
+    }
+}
