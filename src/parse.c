@@ -54,10 +54,11 @@ static Expr* new_expr(ExpressionType type, void* realExpr)
     return expr;
 }
 
-static LiteralExpr* new_literal(void* value)
+static LiteralExpr* new_literal(void* value, LiteralType type)
 {
     LiteralExpr* expr = (LiteralExpr*)alloc(sizeof(LiteralExpr));
     expr->value = value;
+    expr->type = type;
     return expr;
 }
 
@@ -104,16 +105,28 @@ static Expr* primary(Node** node)
     Expr* groupedExpr = NULL;
     Node** n = NULL;
     const Token* tkn = (Token*)(*node)->data;
+    double* doubleLiteral = NULL;
+
     if (MATCH(tkn->type, TRUE)) {
-        return new_expr(LITERAL, (void*)new_literal("true"));
+        return new_expr(LITERAL, (void*)new_literal("true", BOOL_L));
     }
 
     if (MATCH(tkn->type, FALSE)) {
-        return new_expr(LITERAL, (void*)new_literal("false"));
+        return new_expr(LITERAL, (void*)new_literal("false", BOOL_L));
     }
 
     if (MATCH(tkn->type, NIL)) {
-        return new_expr(LITERAL, (void*)new_literal("nil"));
+        return new_expr(LITERAL, (void*)new_literal("nil", NIL_L));
+    }
+
+    if (MATCH(tkn->type, STRING)) {
+        return new_expr(LITERAL, new_literal(tkn->literal, STRING_L));
+    }
+
+    if (MATCH(tkn->type, NUMBER)) {
+        doubleLiteral = (double*)alloc(sizeof(double));
+        *doubleLiteral = atof(tkn->literal);
+        return new_expr(LITERAL, new_literal(doubleLiteral, NUMBER_L));
     }
 
     if (MATCH(tkn->type, LEFT_PAREN)) {

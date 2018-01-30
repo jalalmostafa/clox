@@ -9,6 +9,13 @@ typedef enum expr_type_t {
     LITERAL
 } ExpressionType;
 
+typedef enum literal_expr_type_t {
+    NIL_L,
+    BOOL_L,
+    NUMBER_L,
+    STRING_L
+} LiteralType;
+
 typedef struct expression_t {
     ExpressionType type;
     void* expr;
@@ -35,6 +42,7 @@ typedef struct expression_grouping {
 
 typedef struct expression_literal {
     void* value;
+    LiteralType type;
 } LiteralExpr;
 
 typedef void* (*Action)(void*);
