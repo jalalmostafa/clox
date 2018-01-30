@@ -318,7 +318,7 @@ Tokenization* toknzr(const char* code)
                 } else if (strcmp(literal, RETURN_KEY) == 0) {
                     tokn = token_simple(RETURN, line, current, RETURN_KEY);
                 } else if (strcmp(literal, SUPER_KEY) == 0) {
-                    tokn = token_simple(SUPER, line, current, SUPER);
+                    tokn = token_simple(SUPER, line, current, SUPER_KEY);
                 } else if (strcmp(literal, THIS_KEY) == 0) {
                     tokn = token_simple(THIS, line, current, THIS_KEY);
                 } else if (strcmp(literal, TRUE_KEY) == 0) {
