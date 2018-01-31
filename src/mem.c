@@ -1,5 +1,6 @@
 #include "except.h"
 #include <stdlib.h>
+#include <string.h>
 
 void* alloc(size_t size)
 {
@@ -15,4 +16,10 @@ void fr(void* mem)
     if (mem != NULL) {
         free(mem);
     }
+}
+void* clone(void* src, size_t size)
+{
+    void* dst = alloc(size);
+    memcpy(dst, src, size);
+    return dst;
 }
