@@ -108,15 +108,15 @@ static Expr* primary(Node** node)
     double* doubleLiteral = NULL;
 
     if (MATCH(tkn->type, TRUE)) {
-        return new_expr(LITERAL, (void*)new_literal("true", BOOL_L));
+        return new_expr(LITERAL, (void*)new_literal(TRUE_KEY, BOOL_L));
     }
 
     if (MATCH(tkn->type, FALSE)) {
-        return new_expr(LITERAL, (void*)new_literal("false", BOOL_L));
+        return new_expr(LITERAL, (void*)new_literal(FALSE_KEY, BOOL_L));
     }
 
     if (MATCH(tkn->type, NIL)) {
-        return new_expr(LITERAL, (void*)new_literal("nil", NIL_L));
+        return new_expr(LITERAL, (void*)new_literal(NIL_KEY, NIL_L));
     }
 
     if (MATCH(tkn->type, STRING)) {
@@ -265,20 +265,17 @@ static void synchronize(Node** node)
     }
 }
 
-void accept(ExpressionVisitor visitor, Expr* expr)
+void* accept(ExpressionVisitor visitor, Expr* expr)
 {
     switch (expr->type) {
     case LITERAL:
-        visitor.visitLiteral(expr->expr);
-        break;
+        return visitor.visitLiteral(expr->expr);
     case UNARY:
-        visitor.visitUnary(expr->expr);
-        break;
+        return visitor.visitUnary(expr->expr);
     case BINARY:
-        visitor.visitBinary(expr->expr);
-        break;
+        return visitor.visitBinary(expr->expr);
     case GROUPING:
-        visitor.visitGrouping(expr->expr);
-        break;
+        return visitor.visitGrouping(expr->expr);
     }
+    return NULL;
 }

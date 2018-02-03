@@ -335,12 +335,6 @@ Tokenization* toknzr(const char* code)
             }
             break;
         }
-#ifdef DEBUG
-        if (literal != NULL) {
-            printf("Literal: %s\n", literal);
-        }
-        printf("Type: %s\n", to_type_string(tokn->type));
-#endif
         fr(literal);
         literal = NULL;
         current++;

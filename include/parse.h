@@ -13,7 +13,8 @@ typedef enum literal_expr_type_t {
     NIL_L,
     BOOL_L,
     NUMBER_L,
-    STRING_L
+    STRING_L,
+    ERROR_L
 } LiteralType;
 
 typedef struct expression_t {
@@ -55,7 +56,7 @@ typedef struct expression_visitors {
 } ExpressionVisitor;
 
 Expr* parse(Tokenization* toknz);
-void accept(ExpressionVisitor vistor, Expr* expr);
+void* accept(ExpressionVisitor vistor, Expr* expr);
 void destroy_expr(Expr* expr);
 
 #define END_OF_TOKENS(x) ((x) == EOF)
