@@ -5,6 +5,7 @@
 #include "mem.h"
 #include "tokenizer.h"
 #include <stdio.h>
+#include <string.h>
 
 static Expr* equality(Node** token);
 static Expr* comparison(Node** token);
@@ -54,11 +55,12 @@ static Expr* new_expr(ExpressionType type, void* realExpr)
     return expr;
 }
 
-static LiteralExpr* new_literal(void* value, LiteralType type)
+static LiteralExpr* new_literal(void* value, LiteralType type, int size)
 {
     LiteralExpr* expr = (LiteralExpr*)alloc(sizeof(LiteralExpr));
     expr->value = value;
     expr->type = type;
+    expr->valueSize = size;
     return expr;
 }
 
@@ -108,25 +110,25 @@ static Expr* primary(Node** node)
     double* doubleLiteral = NULL;
 
     if (MATCH(tkn->type, TRUE)) {
-        return new_expr(LITERAL, (void*)new_literal(TRUE_KEY, BOOL_L));
+        return new_expr(LITERAL, (void*)new_literal(TRUE_KEY, BOOL_L, strlen(TRUE_KEY) + 1));
     }
 
     if (MATCH(tkn->type, FALSE)) {
-        return new_expr(LITERAL, (void*)new_literal(FALSE_KEY, BOOL_L));
+        return new_expr(LITERAL, (void*)new_literal(FALSE_KEY, BOOL_L, strlen(FALSE_KEY) + 1));
     }
 
     if (MATCH(tkn->type, NIL)) {
-        return new_expr(LITERAL, (void*)new_literal(NIL_KEY, NIL_L));
+        return new_expr(LITERAL, (void*)new_literal(NIL_KEY, NIL_L, strlen(NIL_KEY) + 1));
     }
 
     if (MATCH(tkn->type, STRING)) {
-        return new_expr(LITERAL, new_literal(tkn->literal, STRING_L));
+        return new_expr(LITERAL, new_literal(tkn->literal, STRING_L, strlen(tkn->literal) + 1));
     }
 
     if (MATCH(tkn->type, NUMBER)) {
         doubleLiteral = (double*)alloc(sizeof(double));
         *doubleLiteral = atof(tkn->literal);
-        return new_expr(LITERAL, new_literal(doubleLiteral, NUMBER_L));
+        return new_expr(LITERAL, new_literal(doubleLiteral, NUMBER_L, sizeof(double)));
     }
 
     if (MATCH(tkn->type, LEFT_PAREN)) {
@@ -217,8 +219,8 @@ void destroy_expr(Expr* expr)
     void* ex = NULL;
     switch (expr->type) {
     case LITERAL:
-        fr(((LiteralExpr*) expr->expr)->value);
-        fr(((LiteralExpr*) expr->expr));
+        fr(((LiteralExpr*)expr->expr)->value);
+        fr(((LiteralExpr*)expr->expr));
         break;
     case UNARY:
         ex = (UnaryExpr*)(expr->expr);

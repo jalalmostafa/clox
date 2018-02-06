@@ -44,6 +44,7 @@ typedef struct expression_grouping {
 typedef struct expression_literal {
     void* value;
     LiteralType type;
+    int valueSize;
 } LiteralExpr;
 
 typedef void* (*Action)(void*);

@@ -237,5 +237,8 @@ void* visit_grouping(void* expr)
 
 void* visit_literal(void* expr)
 {
-    return clone(expr, sizeof(LiteralExpr));
+    LiteralExpr* original = (LiteralExpr*)expr;
+    LiteralExpr* lexpr = (LiteralExpr*)clone(original, sizeof(LiteralExpr));
+    lexpr->value = clone(original->value, original->valueSize);
+    return lexpr;
 }
