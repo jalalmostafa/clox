@@ -1,6 +1,6 @@
 # C-lox
 
- C-lox is an implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter in C.
+ C-lox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter in C. Tested both on Windows and Linux for x96_64 architecture.
 
 ## Coding Conventions
 
@@ -12,7 +12,7 @@ C-lox source code follows [Webkit Coding Convention](https://webkit.org/code-sty
 
 ## Build
 
-In order to build and compile C-lox, you need to install `CMake` plus the toolchain of your choice, e.g. `MSBuild with MSVC++` or `make with gcc`
+In order to build and compile C-lox, you need to install `CMake` plus the toolchain of your choice, e.g. `MSBuild with MSVC` or `make with gcc`
 
 | Platform | Build Dependencies |
 | -------- | ------------------ |
@@ -32,8 +32,8 @@ In order to execute C-lox, check `/bin` folder in project directory for binaries
 
 Build tests have been conducted as follows:
 
-* Windows x86_64 MSBuild and MSVC++ 15
-* Windows x86_64 make and gcc
+* Windows x86_64 MSBuild and MSVC 19
+* Windows x86_64 make and gcc 5.3
 
 ## Download
 

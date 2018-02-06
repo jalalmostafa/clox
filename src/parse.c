@@ -214,13 +214,14 @@ Expr* parse(Tokenization* toknz)
 
 void destroy_expr(Expr* expr)
 {
-    Expr* ex = NULL;
+    void* ex = NULL;
     switch (expr->type) {
     case LITERAL:
-        fr(((LiteralExpr*)expr)->value);
+        fr(((LiteralExpr*) expr->expr)->value);
+        fr(((LiteralExpr*) expr->expr));
         break;
     case UNARY:
-        ex = ((UnaryExpr*)expr)->expr;
+        ex = (UnaryExpr*)(expr->expr);
         destroy_expr(ex);
         fr(ex);
         break;

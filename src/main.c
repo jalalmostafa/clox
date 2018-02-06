@@ -1,6 +1,8 @@
 #include "except.h"
 #include "global.h"
+#include "interp.h"
 #include "mem.h"
+#include "parse.h"
 #include "readline.h"
 #include "tokenizer.h"
 #include <stdio.h>
@@ -84,6 +86,24 @@ char* read_file(char* filepath, char* buf)
 
 void run(const char* code)
 {
+    double* value = NULL;
     Tokenization* toknz = toknzr(code);
+    Expr* expr = parse(toknz);
+    Object* obj = interp(expr);
+    switch (obj->type) {
+    case STRING_L:
+    case BOOL_L:
+    case NIL_L:
+    case ERROR_L:
+        printf("%s\n", (char*)obj->value);
+        break;
+    case NUMBER:
+        value = (double*)obj->value;
+        printf("%f\n", *value);
+        break;
+    }
+    fr(obj->value);
+    fr(obj);
+    destroy_expr(expr);
     toknzr_destroy(toknz);
 }
