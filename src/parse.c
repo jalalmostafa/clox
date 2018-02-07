@@ -91,8 +91,8 @@ static GroupingExpr* new_grouping(void* internalExpr)
 static Expr* binary_production(Node** token, Expr* (*rule)(Node** t), TokenType matchTokens[], int n)
 {
     Expr *expr = rule(token), *exprRight = NULL, *temp = NULL;
-    const Token *tkn = (*token)->data, *tknPrev = NULL;
-    while (match(tkn->type, matchTokens, n, token)) {
+    const Token* tknPrev = NULL;
+    while (match(((Token*)(*token)->data)->type, matchTokens, n, token)) {
         tknPrev = (*token)->prev->data;
         exprRight = rule(token);
         temp = expr;
@@ -110,22 +110,27 @@ static Expr* primary(Node** node)
     double* doubleLiteral = NULL;
 
     if (MATCH(tkn->type, TRUE)) {
+        (*node) = (*node)->next;
         return new_expr(LITERAL, (void*)new_literal(TRUE_KEY, BOOL_L, strlen(TRUE_KEY) + 1));
     }
 
     if (MATCH(tkn->type, FALSE)) {
+        (*node) = (*node)->next;
         return new_expr(LITERAL, (void*)new_literal(FALSE_KEY, BOOL_L, strlen(FALSE_KEY) + 1));
     }
 
     if (MATCH(tkn->type, NIL)) {
+        (*node) = (*node)->next;
         return new_expr(LITERAL, (void*)new_literal(NIL_KEY, NIL_L, strlen(NIL_KEY) + 1));
     }
 
     if (MATCH(tkn->type, STRING)) {
+        (*node) = (*node)->next;
         return new_expr(LITERAL, new_literal(tkn->literal, STRING_L, strlen(tkn->literal) + 1));
     }
 
     if (MATCH(tkn->type, NUMBER)) {
+        (*node) = (*node)->next;
         doubleLiteral = (double*)alloc(sizeof(double));
         *doubleLiteral = atof(tkn->literal);
         return new_expr(LITERAL, new_literal(doubleLiteral, NUMBER_L, sizeof(double)));

@@ -1,7 +1,6 @@
 #include "except.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 void* alloc(size_t size)
 {
