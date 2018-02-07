@@ -82,6 +82,7 @@ static char* read_between(const char* code, int codeLength, int* current, int* l
         return NULL;
     }
     length = *current - start;
+    (*current)--;
     literal = (char*)alloc(length);
     memcpy(literal, &(code[start + 1]), length);
     literal[length - 1] = '\0';
@@ -188,6 +189,7 @@ static char* read_number(const char* code, int codeLength, int* current)
         } while (!IS_AT_END(*current, codeLength) && isdigit(code[*current]));
     }
     length = *current - start + 1;
+    (*current)--;
     literal = (char*)alloc(length);
     memcpy(literal, &(code[start]), length);
     literal[length - 1] = '\0';
@@ -202,6 +204,7 @@ static char* read_other(const char* code, int codeLength, int* current)
         (*current)++;
     } while (!IS_AT_END(*current, codeLength) && IS_ALPHA_NUMERIC(code[*current]));
     length = *current - start + 1;
+    (*current)--;
     literal = (char*)alloc(length);
     memcpy(literal, &(code[start]), length);
     literal[length - 1] = '\0';
