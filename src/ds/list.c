@@ -21,13 +21,16 @@ List* list()
 
 Node* list_push(List* list, void* data)
 {
+    Node* newNode = node(data);
+    Node* last = NULL;
+
     if (list == NULL) {
         return NULL;
     }
-    Node* newNode = node(data);
-    Node* last = list_last(list);
+    last = list_last(list);
     if (last != NULL) {
         last->next = newNode;
+        newNode->prev = last;
     }
 
     if (list->head == NULL) {

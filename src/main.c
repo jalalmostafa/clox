@@ -97,7 +97,7 @@ void run(const char* code)
     case ERROR_L:
         printf("%s\n", (char*)obj->value);
         break;
-    case NUMBER:
+    case NUMBER_L:
         value = (double*)obj->value;
         printf("%f\n", *value);
         break;
