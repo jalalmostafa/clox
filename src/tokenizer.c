@@ -341,7 +341,10 @@ Tokenization* toknzr(const char* code)
         fr(literal);
         literal = NULL;
         current++;
-        list_push(toknz->values, tokn);
+        if (tokn != NULL) {
+            list_push(toknz->values, tokn);
+            tokn = NULL;
+        }
     }
     toknz->lines = line;
     list_push(toknz->values, token_simple(EOF, line, current, "EOF"));
