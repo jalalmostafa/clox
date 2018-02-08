@@ -82,7 +82,6 @@ static char* read_between(const char* code, int codeLength, int* current, int* l
         return NULL;
     }
     length = *current - start;
-    (*current)--;
     literal = (char*)alloc(length);
     memcpy(literal, &(code[start + 1]), length);
     literal[length - 1] = '\0';

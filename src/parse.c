@@ -104,22 +104,26 @@ static Expr* primary(Node** node)
 {
     Expr* groupedExpr = NULL;
     Node** n = NULL;
+    int valueSize = 0;
     const Token* tkn = (Token*)(*node)->data;
     double* doubleLiteral = NULL;
 
     if (MATCH(tkn->type, TRUE)) {
         (*node) = (*node)->next;
-        return new_expr(LITERAL, (void*)new_literal(TRUE_KEY, BOOL_L, strlen(TRUE_KEY) + 1));
+        valueSize = strlen(TRUE_KEY) + 1;
+        return new_expr(LITERAL, (void*)new_literal(clone(TRUE_KEY, valueSize), BOOL_L, valueSize));
     }
 
     if (MATCH(tkn->type, FALSE)) {
         (*node) = (*node)->next;
-        return new_expr(LITERAL, (void*)new_literal(FALSE_KEY, BOOL_L, strlen(FALSE_KEY) + 1));
+        valueSize = strlen(FALSE_KEY) + 1;
+        return new_expr(LITERAL, (void*)new_literal(clone(FALSE_KEY, valueSize), BOOL_L, valueSize));
     }
 
     if (MATCH(tkn->type, NIL)) {
         (*node) = (*node)->next;
-        return new_expr(LITERAL, (void*)new_literal(NIL_KEY, NIL_L, strlen(NIL_KEY) + 1));
+        valueSize = strlen(NIL_KEY) + 10;
+        return new_expr(LITERAL, (void*)new_literal(clone(NIL_KEY, valueSize), NIL_L, valueSize));
     }
 
     if (MATCH(tkn->type, STRING)) {
@@ -143,7 +147,7 @@ static Expr* primary(Node** node)
         }
         return new_expr(GROUPING, (void*)new_grouping(groupedExpr));
     }
-    except("Unexpected identifier");
+    except("Unexpected identifier\n");
     return NULL;
 }
 
@@ -228,7 +232,6 @@ void destroy_expr(Expr* expr)
     case UNARY:
         ex = (UnaryExpr*)(expr->expr);
         destroy_expr(ex);
-        fr(ex);
         break;
     case BINARY:
         ex = ((BinaryExpr*)expr->expr)->leftExpr;
@@ -237,7 +240,7 @@ void destroy_expr(Expr* expr)
         destroy_expr(ex);
         break;
     case GROUPING:
-        ex = ((GroupingExpr*)expr)->expr;
+        ex = ((GroupingExpr*)expr->expr);
         destroy_expr(ex);
         break;
     default:

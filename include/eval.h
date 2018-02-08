@@ -11,7 +11,7 @@ void* visit_literal(void* expr);
 
 extern ExpressionVisitor EvalVisitor;
 
-#define OPERAND_NUMBER "Operands must be numbers at line: %d"
-#define OPERAND_SAMETYPE "Operands must be two numbers or two strings at line: %d"
+#define OPERAND_NUMBER "Syntax Error: Operands must be numbers at line: %d"
+#define OPERAND_SAMETYPE "Syntax Error: Operands must be two numbers or two strings at line: %d"
 
 #endif
