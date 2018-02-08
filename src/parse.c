@@ -90,14 +90,12 @@ static GroupingExpr* new_grouping(void* internalExpr)
 
 static Expr* binary_production(Node** token, Expr* (*rule)(Node** t), TokenType matchTokens[], int n)
 {
-    Expr *expr = rule(token), *exprRight = NULL, *temp = NULL;
+    Expr *expr = rule(token), *exprRight = NULL;
     const Token* tknPrev = NULL;
     while (match(((Token*)(*token)->data)->type, matchTokens, n, token)) {
         tknPrev = (*token)->prev->data;
         exprRight = rule(token);
-        temp = expr;
         expr = new_expr(BINARY, new_binary(*tknPrev, expr, exprRight));
-        fr(temp);
     }
     return expr;
 }
@@ -233,16 +231,15 @@ void destroy_expr(Expr* expr)
         fr(ex);
         break;
     case BINARY:
-        ex = ((BinaryExpr*)expr)->leftExpr;
+        ex = ((BinaryExpr*)expr->expr)->leftExpr;
         destroy_expr(ex);
-        fr(ex);
-        ex = ((BinaryExpr*)expr)->rightExpr;
+        ex = ((BinaryExpr*)expr->expr)->rightExpr;
         destroy_expr(ex);
-        fr(ex);
+        break;
     case GROUPING:
         ex = ((GroupingExpr*)expr)->expr;
         destroy_expr(ex);
-        fr(ex);
+        break;
     default:
         break;
     }
