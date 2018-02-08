@@ -130,6 +130,8 @@ void* visit_binary(void* expr)
     case GREATER:
         if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
             result->type = BOOL_L;
+            lvalue = (double*)lObject->value;
+            rvalue = (double*)rObject->value;
             ordinary = (*lvalue > *rvalue);
             result->value = clone(likely(ordinary), strlen(likely(ordinary)) + 1);
         } else {
@@ -139,6 +141,8 @@ void* visit_binary(void* expr)
     case GREATER_EQUAL:
         if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
             result->type = BOOL_L;
+            lvalue = (double*)lObject->value;
+            rvalue = (double*)rObject->value;
             ordinary = (*lvalue >= *rvalue);
             result->value = clone(likely(ordinary), strlen(likely(ordinary)) + 1);
         } else {
@@ -148,6 +152,8 @@ void* visit_binary(void* expr)
     case LESS:
         if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
             result->type = BOOL_L;
+            lvalue = (double*)lObject->value;
+            rvalue = (double*)rObject->value;
             ordinary = (*lvalue < *rvalue);
             result->value = clone(likely(ordinary), strlen(likely(ordinary)) + 1);
         } else {
@@ -157,6 +163,8 @@ void* visit_binary(void* expr)
     case LESS_EQUAL:
         if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
             result->type = BOOL_L;
+            lvalue = (double*)lObject->value;
+            rvalue = (double*)rObject->value;
             ordinary = (*lvalue <= *rvalue);
             result->value = clone(likely(ordinary), strlen(likely(ordinary)) + 1);
         } else {
@@ -169,6 +177,8 @@ void* visit_binary(void* expr)
             result->value = clone(likely(1), strlen(likely(1)) + 1);
         } else if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
             result->type = BOOL_L;
+            lvalue = (double*)lObject->value;
+            rvalue = (double*)rObject->value;
             ordinary = (*lvalue == *rvalue);
             result->value = clone(likely(ordinary), strlen(likely(ordinary)) + 1);
         } else if ((rObject->type == STRING_L && lObject->type == STRING_L)
@@ -185,6 +195,8 @@ void* visit_binary(void* expr)
             result->value = clone(likely(0), strlen(likely(0)) + 1);
         } else if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
             result->type = BOOL_L;
+            lvalue = (double*)lObject->value;
+            rvalue = (double*)rObject->value;
             ordinary = (*lvalue != *rvalue);
             result->value = clone(likely(ordinary), strlen(likely(ordinary)) + 1);
         } else if ((rObject->type == STRING_L && lObject->type == STRING_L)
