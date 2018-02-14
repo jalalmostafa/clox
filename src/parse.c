@@ -223,14 +223,14 @@ Expr* parse(Tokenization* toknz)
 
 void destroy_expr(Expr* expr)
 {
-    void* ex = NULL;
+    Expr* ex = NULL;
     switch (expr->type) {
     case LITERAL:
         fr(((LiteralExpr*)expr->expr)->value);
         fr(((LiteralExpr*)expr->expr));
         break;
     case UNARY:
-        ex = (UnaryExpr*)(expr->expr);
+        ex = ((UnaryExpr*)expr->expr)->expr;
         destroy_expr(ex);
         break;
     case BINARY:
@@ -240,7 +240,7 @@ void destroy_expr(Expr* expr)
         destroy_expr(ex);
         break;
     case GROUPING:
-        ex = ((GroupingExpr*)expr->expr);
+        ex = ((GroupingExpr*)expr->expr)->expr;
         destroy_expr(ex);
         break;
     default:
