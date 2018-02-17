@@ -1,6 +1,6 @@
 # C-lox
 
- C-lox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter in C. Tested both on Windows and Linux for x96_64 architecture.
+clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) treewalk interpreter in C.
 
 ## Coding Conventions
 
@@ -12,17 +12,11 @@ C-lox source code follows [Webkit Coding Convention](https://webkit.org/code-sty
 
 ## Build
 
-In order to build and compile C-lox, you need to install `CMake` plus the toolchain of your choice, e.g. `MSBuild with MSVC` or `make with gcc`
-
-| Platform | Build Dependencies |
-| -------- | ------------------ |
-| Windows  | [CMake](https://cmake.org/) |
-
-After you setup your `CMake` with your toolchain of choice, clone the repository and build the project as follows:
+In order to build and compile C-lox, you need to install `CMake` plus the toolchain of your choice, e.g. `MSBuild with MSVC` or `make with gcc`. After you setup [CMake](https://cmake.org/install) with your toolchain of choice, clone the repository and build the project as follows:
 
 ```bash
-git clone https://github.com/jalalmostafa/c-lox.git
-cd c-lox/
+git clone https://github.com/jalalmostafa/clox.git
+cd clox/
 mkdir build && cd build
 cmake ..
 cmake --build .
@@ -30,14 +24,15 @@ cmake --build .
 
 In order to execute C-lox, check `/bin` folder in project directory for binaries.
 
-Build tests have been conducted as follows:
+Build tests have been conducted on:
 
 * Windows x86_64 MSBuild and MSVC 19
 * Windows x86_64 make and gcc 5.3
+* Ubuntu x86_64 make and gcc 5.3
 
 ## Download
 
-Download [lastest](https://github.com/jalalmostafa/c-lox/releases).
+Download [lastest](https://github.com/jalalmostafa/clox/releases).
 
 ## License
 
