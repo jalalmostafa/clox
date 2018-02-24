@@ -22,26 +22,26 @@ typedef struct expression_t {
     void* expr;
 } Expr;
 
-typedef struct expression_tree {
+typedef struct expression_tree_t {
     Expr* expr;
 } ExprTree;
 
-typedef struct expression_binary {
+typedef struct expression_binary_t {
     Token op;
     Expr* leftExpr;
     Expr* rightExpr;
 } BinaryExpr;
 
-typedef struct expression_unary {
+typedef struct expression_unary_t {
     Token op;
     Expr* expr;
 } UnaryExpr;
 
-typedef struct expression_grouping {
+typedef struct expression_grouping_t {
     Expr* expr;
 } GroupingExpr;
 
-typedef struct expression_literal {
+typedef struct expression_literal_t {
     void* value;
     LiteralType type;
     int valueSize;
@@ -49,7 +49,7 @@ typedef struct expression_literal {
 
 typedef void* (*Action)(void*);
 
-typedef struct expression_visitors {
+typedef struct expression_visitor_t {
     Action visitBinary;
     Action visitUnary;
     Action visitLiteral;
