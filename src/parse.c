@@ -14,12 +14,12 @@ static Expr* mutiplication(Node** token);
 static Expr* unary(Node** token);
 static Expr* primary(Node** token);
 
-static int match(TokenType type, TokenType types[], int n, Node** token)
+static int match(TokenType type, TokenType types[], int n, Node** node)
 {
     int i = 0;
     for (i = 0; i < n; i++) {
         if (MATCH(type, types[i])) {
-            (*token) = (*token)->next;
+            (*node) = (*node)->next;
             return 1;
         }
     }
@@ -88,13 +88,13 @@ static GroupingExpr* new_grouping(void* internalExpr)
     return expr;
 }
 
-static Expr* binary_production(Node** token, Expr* (*rule)(Node** t), TokenType matchTokens[], int n)
+static Expr* binary_production(Node** node, Expr* (*rule)(Node** t), TokenType matchTokens[], int n)
 {
-    Expr *expr = rule(token), *exprRight = NULL;
+    Expr *expr = rule(node), *exprRight = NULL;
     const Token* tknPrev = NULL;
-    while (match(((Token*)(*token)->data)->type, matchTokens, n, token)) {
-        tknPrev = (*token)->prev->data;
-        exprRight = rule(token);
+    while (match(((Token*)(*node)->data)->type, matchTokens, n, node)) {
+        tknPrev = (*node)->prev->data;
+        exprRight = rule(node);
         expr = new_expr(BINARY, new_binary(*tknPrev, expr, exprRight));
     }
     return expr;
@@ -151,42 +151,42 @@ static Expr* primary(Node** node)
     return NULL;
 }
 
-static Expr* unary(Node** token)
+static Expr* unary(Node** node)
 {
     Node* prev = NULL;
     Expr* rightExpr = NULL;
-    const Token *tkn = (*token)->data, *tknPrev = NULL;
+    const Token *tkn = (*node)->data, *tknPrev = NULL;
     TokenType unaryTokens[] = {
         MINUS,
         BANG
     };
-    if (match(tkn->type, unaryTokens, 2, token)) {
-        tknPrev = (Token*)(*token)->prev->data;
-        rightExpr = unary(token);
+    if (match(tkn->type, unaryTokens, 2, node)) {
+        tknPrev = (Token*)(*node)->prev->data;
+        rightExpr = unary(node);
         return new_expr(UNARY, (void*)new_unary(*tknPrev, rightExpr));
     }
-    return primary(token);
+    return primary(node);
 }
 
-static Expr* mutiplication(Node** token)
+static Expr* mutiplication(Node** node)
 {
     TokenType multiplicationTokens[] = {
         SLASH,
         STAR
     };
-    return binary_production(token, unary, multiplicationTokens, 2);
+    return binary_production(node, unary, multiplicationTokens, 2);
 }
 
-static Expr* addition(Node** token)
+static Expr* addition(Node** node)
 {
     TokenType additionTokens[] = {
         MINUS,
         PLUS
     };
-    return binary_production(token, mutiplication, additionTokens, 2);
+    return binary_production(node, mutiplication, additionTokens, 2);
 }
 
-static Expr* comparison(Node** token)
+static Expr* comparison(Node** node)
 {
     TokenType comparisonTokens[] = {
         GREATER,
@@ -194,16 +194,16 @@ static Expr* comparison(Node** token)
         LESS,
         LESS_EQUAL
     };
-    return binary_production(token, addition, comparisonTokens, 4);
+    return binary_production(node, addition, comparisonTokens, 4);
 }
 
-static Expr* equality(Node** token)
+static Expr* equality(Node** node)
 {
     TokenType equalityTokens[] = {
         BANG_EQUAL,
         EQUAL_EQUAL
     };
-    return binary_production(token, comparison, equalityTokens, 2);
+    return binary_production(node, comparison, equalityTokens, 2);
 }
 
 Expr* parse(Tokenization* toknz)
