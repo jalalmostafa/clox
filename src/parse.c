@@ -30,9 +30,9 @@ static void error(Node* node, const char* msg)
 {
     const Token* token = (Token*)node->data;
     if (token->type == EOF) {
-        except("Syntax Error at end of file: %s", msg);
+        except("Syntax Error at end of file: %s\n", msg);
     } else {
-        except("Syntax Error (Line %d): %s '%s'", token->line, msg, token->lexeme);
+        except("Syntax Error (Line %d): %s '%s'\n", token->line, msg, token->lexeme);
     }
 }
 
@@ -206,22 +206,72 @@ static Expr* equality(Node** node)
     return binary_production(node, comparison, equalityTokens, 2);
 }
 
-Expr* parse(Tokenization* toknz)
+static Node** unterminated_statement(Node** node)
 {
-    List* tokens = toknz->values;
-    int nbTokens = 0, i = 0;
-    Node* head = NULL;
-
-    if (tokens == NULL) {
-        return NULL;
-    }
-    nbTokens = tokens->count;
-    head = tokens->head;
-
-    return equality(&head);
+    return consume(node, SEMICOLON, "Expect ';' after value");
 }
 
-void destroy_expr(Expr* expr)
+static Stmt* new_statement(StmtType type, Expr* expr)
+{
+    Stmt* stmt = (Stmt*)alloc(sizeof(Stmt));
+    stmt->type = type;
+    stmt->expr = expr;
+    return stmt;
+}
+
+static Stmt* new_terminated_statement(Node** node, StmtType type)
+{
+    Expr* expr = equality(node);
+    unterminated_statement(node);
+    return new_statement(type, expr);
+}
+
+static Stmt* print_statement(Node** node)
+{
+    return new_terminated_statement(node, STMT_PRINT);
+}
+
+static Stmt* expression_statement(Node** node)
+{
+    return new_terminated_statement(node, STMT_EXPR);
+}
+
+static Stmt* statement(Node** node)
+{
+    const Token* tkn = (Token*)((*node)->data);
+    if (MATCH(tkn->type, PRINT)) {
+        (*node) = (*node)->next;
+        return print_statement(node);
+    }
+
+    return expression_statement(node);
+}
+
+ParsingContext parse(Tokenization* toknz)
+{
+    ParsingContext ctx;
+    List* stmts = NULL;
+    List* tokens = toknz->values;
+    int nbTokens = 0;
+    Node* head = NULL;
+    Stmt* stmt = NULL;
+
+    memset(&ctx, 0, sizeof(ParsingContext));
+    if (tokens != NULL) {
+        stmts = list();
+        nbTokens = tokens->count;
+        head = tokens->head;
+
+        while (!END_OF_TOKENS(((Expr*)head->data)->type)) {
+            stmt = statement(&head);
+            list_push(stmts, stmt);
+        }
+    }
+    ctx.stmts = stmts;
+    return ctx;
+}
+
+static void destroy_expr(Expr* expr)
 {
     Expr* ex = NULL;
     switch (expr->type) {
@@ -273,7 +323,17 @@ static void synchronize(Node** node)
     }
 }
 
-void* accept(ExpressionVisitor visitor, Expr* expr)
+void destroy_parser(ParsingContext* ctx)
+{
+    int i = 0;
+    if (ctx == NULL || ctx->stmts == 0) {
+        return;
+    }
+    list_foreach(ctx->stmts, destroy_expr);
+    list_destroy(ctx->stmts);
+    ctx->stmts = NULL;
+}
+void* accept_expr(ExpressionVisitor visitor, Expr* expr)
 {
     switch (expr->type) {
     case LITERAL:
@@ -284,6 +344,17 @@ void* accept(ExpressionVisitor visitor, Expr* expr)
         return visitor.visitBinary(expr->expr);
     case GROUPING:
         return visitor.visitGrouping(expr->expr);
+    }
+    return NULL;
+}
+
+void* accept(StmtVisitor visitor, Stmt* stmt)
+{
+    switch (stmt->type) {
+    case STMT_PRINT:
+        return visitor.visitPrintStmt(stmt);
+    case STMT_EXPR:
+        return visitor.visitExpressionStmt(stmt);
     }
     return NULL;
 }

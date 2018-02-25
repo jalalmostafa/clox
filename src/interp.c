@@ -1,6 +1,14 @@
 #include "interp.h"
+#include "ds/list.h"
 
-Object* interp(Expr* expr)
+void for_stmts(void* stmtObj)
 {
-    return (Object*)accept(EvalVisitor, expr);
+    Stmt* stmt = (Stmt*)stmtObj;
+    Object* e = accept(EvaluateStmtVistior, stmt);
+    fr(e);
+}
+
+void interp(ParsingContext ctx)
+{
+    list_foreach(ctx.stmts, for_stmts);
 }

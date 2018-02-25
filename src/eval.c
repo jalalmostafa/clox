@@ -6,16 +6,21 @@
 #include <stdio.h>
 #include <string.h>
 
-ExpressionVisitor EvalVisitor = {
+ExpressionVisitor EvaluateExpressionVisitor = {
     .visitLiteral = visit_literal,
     .visitGrouping = visit_grouping,
     .visitUnary = visit_unary,
     .visitBinary = visit_binary
 };
 
+StmtVisitor EvaluateStmtVistior = {
+    .visitPrintStmt = visit_print,
+    .visitExpressionStmt = visit_expr
+};
+
 static Object* eval(Expr* expr)
 {
-    return (Object*)accept(EvalVisitor, expr);
+    return (Object*)accept_expr(EvaluateExpressionVisitor, expr);
 }
 
 static char* expr_likely(LiteralExpr* expr)
@@ -257,4 +262,34 @@ void* visit_literal(void* expr)
     LiteralExpr* lexpr = (LiteralExpr*)clone(original, sizeof(LiteralExpr));
     lexpr->value = clone(original->value, original->valueSize);
     return lexpr;
+}
+
+void* visit_print(void* stmtObj)
+{
+    Stmt* stmt = (Stmt*)stmtObj;
+    Object* obj = eval(stmt->expr);
+    double* value = NULL;
+    switch (obj->type) {
+    case STRING_L:
+    case BOOL_L:
+    case NIL_L:
+    case ERROR_L:
+        printf("%s\n", (char*)obj->value);
+        break;
+    case NUMBER_L:
+        value = (double*)obj->value;
+        if (*value != (long long)*value) {
+            printf("%lf\n", *value);
+        } else {
+            printf("%lli\n", (long long)*value);
+        }
+        break;
+    }
+    return obj;
+}
+
+void* visit_expr(void* stmtObj)
+{
+    Stmt* stmt = (Stmt*)stmtObj;
+    return eval(stmt->expr);
 }

@@ -56,9 +56,29 @@ typedef struct expression_visitor_t {
     Action visitGrouping;
 } ExpressionVisitor;
 
-Expr* parse(Tokenization* toknz);
-void* accept(ExpressionVisitor vistor, Expr* expr);
-void destroy_expr(Expr* expr);
+typedef enum stmt_type_t {
+    STMT_PRINT,
+    STMT_EXPR
+} StmtType;
+
+typedef struct stmt_visitor_t {
+    Action visitPrintStmt;
+    Action visitExpressionStmt;
+} StmtVisitor;
+
+typedef struct stmt_t {
+    StmtType type;
+    Expr* expr;
+} Stmt;
+
+typedef struct parser_t {
+    List* stmts;
+} ParsingContext;
+
+ParsingContext parse(Tokenization* toknz);
+void* accept(StmtVisitor visitor, Stmt* stmt);
+void* accept_expr(ExpressionVisitor visitor, Expr* expr);
+void destroy_parser(ParsingContext* ctx);
 
 #define END_OF_TOKENS(x) ((x) == EOF)
 #define MATCH(x, type) ((x) == type)

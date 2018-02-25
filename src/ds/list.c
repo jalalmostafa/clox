@@ -158,7 +158,7 @@ void list_destroy(List* list)
 void list_foreach(List* list, Iterator iter)
 {
     Node* n = NULL;
-    if (list == NULL || list->head != NULL) {
+    if (list == NULL || list->head == NULL) {
         return;
     }
     for (n = list->head; n != NULL; n = n->next) {

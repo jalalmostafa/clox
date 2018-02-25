@@ -3,6 +3,6 @@
 #include "eval.h"
 #include "parse.h"
 
-Object* interp(Expr* expr);
+void interp(ParsingContext ctx);
 
 #endif
