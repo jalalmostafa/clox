@@ -78,7 +78,7 @@ typedef struct parser_t {
 ParsingContext parse(Tokenization* toknz);
 void* accept(StmtVisitor visitor, Stmt* stmt);
 void* accept_expr(ExpressionVisitor visitor, Expr* expr);
-void destroy_parser(ParsingContext* ctx);
+void parser_destroy(ParsingContext* ctx);
 
 #define END_OF_TOKENS(x) ((x) == EOF)
 #define MATCH(x, type) ((x) == type)

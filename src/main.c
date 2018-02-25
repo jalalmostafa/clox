@@ -89,7 +89,9 @@ void run(const char* code)
     double* value = NULL;
     Tokenization* toknz = toknzr(code);
     ParsingContext ctx = parse(toknz);
-    interp(ctx);
-    destroy_parser(&ctx);
+    if (ctx.stmts != NULL) {
+        interp(ctx);
+    }
+    parser_destroy(&ctx);
     toknzr_destroy(toknz);
 }

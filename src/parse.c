@@ -147,7 +147,7 @@ static Expr* primary(Node** node)
         }
         return new_expr(GROUPING, (void*)new_grouping(groupedExpr));
     }
-    except("Unexpected identifier\n");
+
     return NULL;
 }
 
@@ -165,6 +165,7 @@ static Expr* unary(Node** node)
         rightExpr = unary(node);
         return new_expr(UNARY, (void*)new_unary(*tknPrev, rightExpr));
     }
+
     return primary(node);
 }
 
@@ -222,8 +223,12 @@ static Stmt* new_statement(StmtType type, Expr* expr)
 static Stmt* new_terminated_statement(Node** node, StmtType type)
 {
     Expr* expr = equality(node);
-    unterminated_statement(node);
-    return new_statement(type, expr);
+    if (expr != NULL) {
+        unterminated_statement(node);
+        return new_statement(type, expr);
+    }
+
+    return NULL;
 }
 
 static Stmt* print_statement(Node** node)
@@ -247,31 +252,7 @@ static Stmt* statement(Node** node)
     return expression_statement(node);
 }
 
-ParsingContext parse(Tokenization* toknz)
-{
-    ParsingContext ctx;
-    List* stmts = NULL;
-    List* tokens = toknz->values;
-    int nbTokens = 0;
-    Node* head = NULL;
-    Stmt* stmt = NULL;
-
-    memset(&ctx, 0, sizeof(ParsingContext));
-    if (tokens != NULL) {
-        stmts = list();
-        nbTokens = tokens->count;
-        head = tokens->head;
-
-        while (!END_OF_TOKENS(((Expr*)head->data)->type)) {
-            stmt = statement(&head);
-            list_push(stmts, stmt);
-        }
-    }
-    ctx.stmts = stmts;
-    return ctx;
-}
-
-static void destroy_expr(Expr* expr)
+static void expr_destroy(Expr* expr)
 {
     Expr* ex = NULL;
     switch (expr->type) {
@@ -281,17 +262,17 @@ static void destroy_expr(Expr* expr)
         break;
     case UNARY:
         ex = ((UnaryExpr*)expr->expr)->expr;
-        destroy_expr(ex);
+        expr_destroy(ex);
         break;
     case BINARY:
         ex = ((BinaryExpr*)expr->expr)->leftExpr;
-        destroy_expr(ex);
+        expr_destroy(ex);
         ex = ((BinaryExpr*)expr->expr)->rightExpr;
-        destroy_expr(ex);
+        expr_destroy(ex);
         break;
     case GROUPING:
         ex = ((GroupingExpr*)expr->expr)->expr;
-        destroy_expr(ex);
+        expr_destroy(ex);
         break;
     default:
         break;
@@ -323,16 +304,22 @@ static void synchronize(Node** node)
     }
 }
 
-void destroy_parser(ParsingContext* ctx)
+static void stmts_destroy(List* stmts)
+{
+    list_foreach(stmts, expr_destroy);
+    list_destroy(stmts);
+}
+
+void parser_destroy(ParsingContext* ctx)
 {
     int i = 0;
     if (ctx == NULL || ctx->stmts == 0) {
         return;
     }
-    list_foreach(ctx->stmts, destroy_expr);
-    list_destroy(ctx->stmts);
+    stmts_destroy(ctx->stmts);
     ctx->stmts = NULL;
 }
+
 void* accept_expr(ExpressionVisitor visitor, Expr* expr)
 {
     switch (expr->type) {
@@ -357,4 +344,34 @@ void* accept(StmtVisitor visitor, Stmt* stmt)
         return visitor.visitExpressionStmt(stmt);
     }
     return NULL;
+}
+
+ParsingContext parse(Tokenization* toknz)
+{
+    ParsingContext ctx;
+    List* stmts = NULL;
+    List* tokens = toknz->values;
+    int nbTokens = 0;
+    Node* head = NULL;
+    Stmt* stmt = NULL;
+
+    memset(&ctx, 0, sizeof(ParsingContext));
+    if (tokens != NULL) {
+        stmts = list();
+        nbTokens = tokens->count;
+        head = tokens->head;
+
+        while (!END_OF_TOKENS(((Expr*)head->data)->type)) {
+            stmt = statement(&head);
+            if (stmt != NULL) {
+                list_push(stmts, stmt);
+            } else {
+                stmts_destroy(stmts);
+                stmts = NULL;
+                break;
+            }
+        }
+    }
+    ctx.stmts = stmts;
+    return ctx;
 }
