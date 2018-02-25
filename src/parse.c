@@ -147,7 +147,7 @@ static Expr* primary(Node** node)
         }
         return new_expr(GROUPING, (void*)new_grouping(groupedExpr));
     }
-
+    error(*node, "Unknown Identifier");
     return NULL;
 }
 
@@ -223,8 +223,7 @@ static Stmt* new_statement(StmtType type, Expr* expr)
 static Stmt* new_terminated_statement(Node** node, StmtType type)
 {
     Expr* expr = equality(node);
-    if (expr != NULL) {
-        unterminated_statement(node);
+    if (expr != NULL && (node = unterminated_statement(node)) != NULL) {
         return new_statement(type, expr);
     }
 
