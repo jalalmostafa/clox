@@ -3,6 +3,7 @@
 #include "mem.h"
 #include "parse.h"
 #include "tokenizer.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -278,10 +279,10 @@ void* visit_print(void* stmtObj)
         break;
     case NUMBER_L:
         value = (double*)obj->value;
-        if (*value != (long long)*value) {
+        if (*value != floor(*value)) {
             printf("%lf\n", *value);
         } else {
-            printf("%lli\n", (long long)*value);
+            printf("%0.0lf\n", floor(*value));
         }
         break;
     }

@@ -1,6 +1,6 @@
 # C-lox
 
-clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) treewalk interpreter in C.
+clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) treewalk interpreter in ANSI C.
 
 Currently working on: [Statements and State](http://craftinginterpreters.com/statements-and-state.html)
 
