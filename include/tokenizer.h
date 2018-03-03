@@ -48,7 +48,7 @@ typedef enum tokentype {
     VAR,
     WHILE,
 
-    EOF
+    ENDOFFILE
 } TokenType;
 
 typedef struct tokenization {

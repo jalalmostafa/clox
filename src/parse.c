@@ -29,10 +29,10 @@ static int match(TokenType type, TokenType types[], int n, Node** node)
 static void error(Node* node, const char* msg)
 {
     const Token* token = (Token*)node->data;
-    if (token->type == EOF) {
-        except("Syntax Error at end of file: %s\n", msg);
+    if (token->type == ENDOFFILE) {
+        except(ERROR_AT_EOF, msg);
     } else {
-        except("Syntax Error (Line %d): %s '%s'\n", token->line, msg, token->lexeme);
+        except(ERROR_AT_LINE, token->line, msg, token->lexeme);
     }
 }
 

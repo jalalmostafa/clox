@@ -167,7 +167,7 @@ static char* to_type_string(TokenType type)
         return VAR_KEY;
     case WHILE:
         return WHILE_KEY;
-    case EOF:
+    case ENDOFFILE:
         return "EOF";
     default:
         return "Unknown";
@@ -214,7 +214,7 @@ Tokenization* toknzr(const char* code)
 {
     char* literal = NULL;
     Token* tokn = NULL;
-    TokenType type = EOF;
+    TokenType type = ENDOFFILE;
     int length = strlen(code), current = 0, line = 1;
     Tokenization* toknz = (Tokenization*)alloc(sizeof(Tokenization));
     toknz->values = list();
@@ -269,8 +269,8 @@ Tokenization* toknzr(const char* code)
             tokn = token_simple(type, line, current, "<");
             break;
         case '/':
-            type = match_next(code, '/', length, &current) ? EOF : SLASH;
-            if (type == EOF) {
+            type = match_next(code, '/', length, &current) ? ENDOFFILE : SLASH;
+            if (type == ENDOFFILE) {
                 do {
                     current++;
                 } while (current != length && code[current] != '\n');
@@ -346,7 +346,7 @@ Tokenization* toknzr(const char* code)
         }
     }
     toknz->lines = line;
-    list_push(toknz->values, token_simple(EOF, line, current, "EOF"));
+    list_push(toknz->values, token_simple(ENDOFFILE, line, current, "EOF"));
     return toknz;
 }
 

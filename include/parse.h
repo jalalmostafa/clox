@@ -81,5 +81,10 @@ void* accept_expr(ExpressionVisitor visitor, Expr* expr);
 void parser_destroy(ParsingContext* ctx);
 
 #define END_OF_TOKENS(x) ((x) == EOF)
+#define END_OF_TOKENS(x) ((x) == ENDOFFILE)
 #define MATCH(x, type) ((x) == type)
+
+#define UNKNOWN_IDENTIFIER "Unknown Identifier"
+#define ERROR_AT_EOF "Syntax Error at end of file: %s\n"
+#define ERROR_AT_LINE "Syntax Error (Line %d): %s '%s'\n"
 #endif
