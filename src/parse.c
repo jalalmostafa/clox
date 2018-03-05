@@ -7,12 +7,14 @@
 #include <stdio.h>
 #include <string.h>
 
-static Expr* equality(Node** token);
-static Expr* comparison(Node** token);
-static Expr* addition(Node** token);
-static Expr* mutiplication(Node** token);
-static Expr* unary(Node** token);
-static Expr* primary(Node** token);
+static Expr* expression(Node** node);
+static Expr* assignment(Node** node);
+static Expr* equality(Node** node);
+static Expr* comparison(Node** node);
+static Expr* addition(Node** node);
+static Expr* mutiplication(Node** node);
+static Expr* unary(Node** node);
+static Expr* primary(Node** node);
 
 static int match(TokenType type, TokenType types[], int n, Node** node)
 {
@@ -41,7 +43,7 @@ static Node** consume(Node** node, TokenType type, const char* msg)
     const Token* tkn = (Token*)(*node)->data;
     if (MATCH(tkn->type, type)) {
         (*node) = (*node)->next;
-        return node;
+        return &(*node)->prev;
     }
     error(*node, msg);
     return NULL;
@@ -64,7 +66,7 @@ static LiteralExpr* new_literal(void* value, LiteralType type, int size)
     return expr;
 }
 
-static UnaryExpr* new_unary(Token op, void* internalExpr)
+static UnaryExpr* new_unary(Token op, Expr* internalExpr)
 {
     UnaryExpr* expr = (UnaryExpr*)alloc(sizeof(UnaryExpr));
     expr->op = op;
@@ -72,19 +74,34 @@ static UnaryExpr* new_unary(Token op, void* internalExpr)
     return expr;
 }
 
-static BinaryExpr* new_binary(Token op, void* left, void* right)
+static BinaryExpr* new_binary(Token op, Expr* left, Expr* right)
 {
     BinaryExpr* expr = (BinaryExpr*)alloc(sizeof(BinaryExpr));
-    expr->leftExpr = left;
-    expr->rightExpr = right;
+    expr->leftExpr = (Expr*)left;
+    expr->rightExpr = (Expr*)right;
     expr->op = op;
     return expr;
 }
 
-static GroupingExpr* new_grouping(void* internalExpr)
+static GroupingExpr* new_grouping(Expr* internalExpr)
 {
     GroupingExpr* expr = (GroupingExpr*)alloc(sizeof(GroupingExpr));
-    expr->expr = internalExpr;
+    expr->expr = (Expr*)internalExpr;
+    return expr;
+}
+
+static VariableExpr* new_variable(Token variableName)
+{
+    VariableExpr* expr = (VariableExpr*)alloc(sizeof(VariableExpr));
+    expr->variableName = variableName;
+    return expr;
+}
+
+static AssignmentExpr* new_assignment(Token variableName, Expr* rightExpr)
+{
+    AssignmentExpr* expr = (AssignmentExpr*)alloc(sizeof(AssignmentExpr));
+    expr->rightExpr = rightExpr;
+    expr->variableName = variableName;
     return expr;
 }
 
@@ -93,7 +110,7 @@ static Expr* binary_production(Node** node, Expr* (*rule)(Node** t), TokenType m
     Expr *expr = rule(node), *exprRight = NULL;
     const Token* tknPrev = NULL;
     while (match(((Token*)(*node)->data)->type, matchTokens, n, node)) {
-        tknPrev = (*node)->prev->data;
+        tknPrev = (Token*)(*node)->prev->data;
         exprRight = rule(node);
         expr = new_expr(BINARY, new_binary(*tknPrev, expr, exprRight));
     }
@@ -111,19 +128,19 @@ static Expr* primary(Node** node)
     if (MATCH(tkn->type, TRUE)) {
         (*node) = (*node)->next;
         valueSize = strlen(TRUE_KEY) + 1;
-        return new_expr(LITERAL, (void*)new_literal(clone(TRUE_KEY, valueSize), BOOL_L, valueSize));
+        return new_expr(LITERAL, (void*)new_literal(clone((void*)TRUE_KEY, valueSize), BOOL_L, valueSize));
     }
 
     if (MATCH(tkn->type, FALSE)) {
         (*node) = (*node)->next;
         valueSize = strlen(FALSE_KEY) + 1;
-        return new_expr(LITERAL, (void*)new_literal(clone(FALSE_KEY, valueSize), BOOL_L, valueSize));
+        return new_expr(LITERAL, (void*)new_literal(clone((void*)FALSE_KEY, valueSize), BOOL_L, valueSize));
     }
 
     if (MATCH(tkn->type, NIL)) {
         (*node) = (*node)->next;
-        valueSize = strlen(NIL_KEY) + 10;
-        return new_expr(LITERAL, (void*)new_literal(clone(NIL_KEY, valueSize), NIL_L, valueSize));
+        valueSize = strlen(NIL_KEY) + 1;
+        return new_expr(LITERAL, (void*)new_literal(clone((void*)NIL_KEY, valueSize), NIL_L, valueSize));
     }
 
     if (MATCH(tkn->type, STRING)) {
@@ -140,22 +157,26 @@ static Expr* primary(Node** node)
 
     if (MATCH(tkn->type, LEFT_PAREN)) {
         *node = (*node)->next;
-        groupedExpr = equality(node);
+        groupedExpr = expression(node);
         n = consume(node, RIGHT_PAREN, "Expect ')' after expression.");
         if (n == NULL) {
             return NULL;
         }
         return new_expr(GROUPING, (void*)new_grouping(groupedExpr));
     }
-    error(*node, "Unknown Identifier");
+
+    if (MATCH(tkn->type, IDENTIFIER)) {
+        *node = (*node)->next;
+        return new_expr(VARIABLE, new_variable(*(Token*)(*node)->prev->data));
+    }
+    error(*node, UNKNOWN_IDENTIFIER);
     return NULL;
 }
 
 static Expr* unary(Node** node)
 {
-    Node* prev = NULL;
     Expr* rightExpr = NULL;
-    const Token *tkn = (*node)->data, *tknPrev = NULL;
+    const Token *tkn = (Token*)(*node)->data, *tknPrev = NULL;
     TokenType unaryTokens[] = {
         MINUS,
         BANG
@@ -207,7 +228,55 @@ static Expr* equality(Node** node)
     return binary_production(node, comparison, equalityTokens, 2);
 }
 
-static Node** unterminated_statement(Node** node)
+static Expr* assignment(Node** node)
+{
+    Expr *expr = equality(node), *nextExpr = NULL;
+    Node* equals = *node;
+    if (MATCH(((Token*)equals->data)->type, EQUAL)) {
+        (*node) = (*node)->next;
+        nextExpr = assignment(node);
+        if (expr != NULL && expr->type == VARIABLE) {
+            return new_expr(ASSIGNMENT, new_assignment(((VariableExpr*)expr->expr)->variableName, nextExpr));
+        }
+        error(equals, "Invalid Assignment Target");
+    }
+
+    return expr;
+}
+
+static Expr* expression(Node** node)
+{
+    return assignment(node);
+}
+
+static void synchronize(Node** node)
+{
+    (*node) = (*node)->next;
+    if (*node != NULL) {
+
+        const Token *token = (Token*)(*node)->data, *prevToken;
+        while (!END_OF_TOKENS(token->type)) {
+            prevToken = (Token*)(*node)->prev->data;
+            if (prevToken->type == SEMICOLON)
+                return;
+
+            switch (token->type) {
+            case CLASS:
+            case FUN:
+            case VAR:
+            case FOR:
+            case IF:
+            case WHILE:
+            case PRINT:
+            case RETURN:
+                return;
+            }
+            (*node) = (*node)->next;
+        }
+    }
+}
+
+static Node** terminated_statement(Node** node)
 {
     return consume(node, SEMICOLON, "Expect ';' after value");
 }
@@ -215,15 +284,15 @@ static Node** unterminated_statement(Node** node)
 static Stmt* new_statement(StmtType type, Expr* expr)
 {
     Stmt* stmt = (Stmt*)alloc(sizeof(Stmt));
+    memset(stmt, 0, sizeof(Stmt));
     stmt->type = type;
     stmt->expr = expr;
     return stmt;
 }
 
-static Stmt* new_terminated_statement(Node** node, StmtType type)
+static Stmt* new_terminated_statement(Node** node, StmtType type, Expr* expr)
 {
-    Expr* expr = equality(node);
-    if (expr != NULL && (node = unterminated_statement(node)) != NULL) {
+    if (terminated_statement(node) != NULL) {
         return new_statement(type, expr);
     }
 
@@ -232,12 +301,40 @@ static Stmt* new_terminated_statement(Node** node, StmtType type)
 
 static Stmt* print_statement(Node** node)
 {
-    return new_terminated_statement(node, STMT_PRINT);
+    Expr* expr = expression(node);
+    return new_terminated_statement(node, STMT_PRINT, expr);
 }
 
 static Stmt* expression_statement(Node** node)
 {
-    return new_terminated_statement(node, STMT_EXPR);
+    Expr* expr = expression(node);
+    return new_terminated_statement(node, STMT_EXPR, expr);
+}
+
+static Stmt* var_statement(Node** node, Expr* initializer, Token variableName)
+{
+    Stmt* stmt = new_terminated_statement(node, STMT_VAR_DECLARATION, initializer);
+    stmt->data = variableName;
+    return stmt;
+}
+
+static Stmt* var_declaration(Node** node)
+{
+    Node** identifierNode = consume(node, IDENTIFIER, "Expected a variable name");
+    Token* name = NULL;
+    Expr* initializer = NULL;
+
+    if (identifierNode == NULL) {
+        return NULL;
+    }
+    name = (Token*)(*identifierNode)->data;
+
+    if (MATCH(((Token*)(*node)->data)->type, EQUAL)) {
+        (*node) = (*node)->next;
+        initializer = expression(node);
+    }
+
+    return var_statement(node, initializer, *name);
 }
 
 static Stmt* statement(Node** node)
@@ -249,6 +346,23 @@ static Stmt* statement(Node** node)
     }
 
     return expression_statement(node);
+}
+
+static Stmt* declaration(Node** node)
+{
+    const Token* tkn = (Token*)((*node)->data);
+    Stmt* stmt = NULL;
+    if (MATCH(tkn->type, VAR)) {
+        (*node) = (*node)->next;
+        stmt = var_declaration(node);
+    } else {
+        stmt = statement(node);
+    }
+    if (stmt == NULL) {
+        synchronize(node);
+    }
+
+    return stmt;
 }
 
 static void expr_destroy(Expr* expr)
@@ -273,50 +387,39 @@ static void expr_destroy(Expr* expr)
         ex = ((GroupingExpr*)expr->expr)->expr;
         expr_destroy(ex);
         break;
+    case ASSIGNMENT:
+        ex = ((AssignmentExpr*)expr->expr)->rightExpr;
+        expr_destroy(ex);
+    case VARIABLE:
     default:
         break;
     }
     fr(expr);
 }
 
-static void synchronize(Node** node)
+void stmt_destroy(void* stmtObj)
 {
-    (*node) = (*node)->next;
-    const Token *token = (Token*)(*node)->data, *prevToken;
-    while (!END_OF_TOKENS(token->type)) {
-        prevToken = (Token*)(*node)->prev->data;
-        if (prevToken->type == SEMICOLON)
-            return;
-
-        switch (token->type) {
-        case CLASS:
-        case FUN:
-        case VAR:
-        case FOR:
-        case IF:
-        case WHILE:
-        case PRINT:
-        case RETURN:
-            return;
-        }
-        (*node) = (*node)->next;
-    }
+    Stmt* stmt = (Stmt*)stmtObj;
+    expr_destroy(stmt->expr);
 }
 
 static void stmts_destroy(List* stmts)
 {
-    list_foreach(stmts, expr_destroy);
+    if (stmts->count != 0) {
+        list_foreach(stmts, stmt_destroy);
+    }
     list_destroy(stmts);
 }
 
 void parser_destroy(ParsingContext* ctx)
 {
-    int i = 0;
-    if (ctx == NULL || ctx->stmts == 0) {
+    if (ctx == NULL) {
         return;
     }
-    stmts_destroy(ctx->stmts);
-    ctx->stmts = NULL;
+    if (ctx->stmts != NULL) {
+        stmts_destroy(ctx->stmts);
+        ctx->stmts = NULL;
+    }
 }
 
 void* accept_expr(ExpressionVisitor visitor, Expr* expr)
@@ -330,6 +433,10 @@ void* accept_expr(ExpressionVisitor visitor, Expr* expr)
         return visitor.visitBinary(expr->expr);
     case GROUPING:
         return visitor.visitGrouping(expr->expr);
+    case VARIABLE:
+        return visitor.visitVariableExpr(expr->expr);
+    case ASSIGNMENT:
+        return visitor.visitAssignmentExpr(expr->expr);
     }
     return NULL;
 }
@@ -341,6 +448,8 @@ void* accept(StmtVisitor visitor, Stmt* stmt)
         return visitor.visitPrintStmt(stmt);
     case STMT_EXPR:
         return visitor.visitExpressionStmt(stmt);
+    case STMT_VAR_DECLARATION:
+        return visitor.visitVarDeclarationStmt(stmt);
     }
     return NULL;
 }
@@ -360,8 +469,8 @@ ParsingContext parse(Tokenization* toknz)
         nbTokens = tokens->count;
         head = tokens->head;
 
-        while (!END_OF_TOKENS(((Expr*)head->data)->type)) {
-            stmt = statement(&head);
+        while (!END_OF_TOKENS(((Token*)head->data)->type)) {
+            stmt = declaration(&head);
             if (stmt != NULL) {
                 list_push(stmts, stmt);
             } else {

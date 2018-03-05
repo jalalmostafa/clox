@@ -5,8 +5,7 @@
 void for_stmts(void* stmtObj)
 {
     Stmt* stmt = (Stmt*)stmtObj;
-    Object* e = accept(EvaluateStmtVistior, stmt);
-    fr(e);
+    accept(EvaluateStmtVistior, stmt);
 }
 
 void interp(ParsingContext ctx)

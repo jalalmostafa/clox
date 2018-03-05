@@ -35,8 +35,10 @@ int main(int argc, char* argv[])
             char* ret = read_file(argv[1], buf);
             if (ret == NULL) {
                 except("Exceeded Maximum File Size");
+            } else {
+                run(buf);
+                env_destroy(&GlobalExecutionEnvironment);
             }
-            run(buf);
         } else {
             for (;;) {
                 line = read_line("> ");
@@ -86,7 +88,6 @@ char* read_file(char* filepath, char* buf)
 
 void run(const char* code)
 {
-    double* value = NULL;
     Tokenization* toknz = toknzr(code);
     ParsingContext ctx = parse(toknz);
     if (ctx.stmts != NULL) {
