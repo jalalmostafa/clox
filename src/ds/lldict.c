@@ -15,8 +15,6 @@ LLDictionary* lldict()
 int lldict_add(LLDictionary* dict, const char* key, void* value)
 {
     KeyValuePair* pair = NULL;
-    Node *node = NULL, *filter = NULL;
-    int keyLength = strlen(key) + 1;
     if (dict != NULL) {
         if (!lldict_contains(dict, key)) {
             pair = (KeyValuePair*)alloc(sizeof(KeyValuePair));
@@ -54,8 +52,7 @@ int lldict_remove(LLDictionary* dict, const char* key)
 
 KeyValuePair* lldict_contains(LLDictionary* dict, const char* key)
 {
-    KeyValuePair* pair = NULL;
-    Node *node = NULL, *filter = NULL;
+    Node *node = NULL;
     int keyLength = strlen(key) + 1;
     if (dict != NULL) {
         for (node = dict->elements->head; node != NULL; node = node->next) {
@@ -96,9 +93,7 @@ void* lldict_get(LLDictionary* dict, const char* key)
 
 int lldict_set(LLDictionary* dict, const char* key, void* value)
 {
-    Node* node = NULL;
     KeyValuePair* pair = NULL;
-    int keyLength = 0;
     if (dict != NULL) {
         pair = lldict_contains(dict, key);
         if (pair != NULL) {

@@ -126,7 +126,7 @@ Node* list_last(List* list)
 
 Node* list_at(List* list, unsigned int index)
 {
-    int idx = 0;
+    unsigned int idx = 0;
     Node* n = NULL;
     if (list == NULL) {
         return NULL;

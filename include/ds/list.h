@@ -10,7 +10,7 @@ typedef struct node {
 typedef struct list {
     Node* head;
     Node* last;
-    int count;
+    unsigned int count;
 } List;
 
 typedef void (*Iterator)(void* data);
