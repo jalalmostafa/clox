@@ -281,19 +281,19 @@ static Node** terminated_statement(Node** node)
     return consume(node, SEMICOLON, "Expect ';' after value");
 }
 
-static Stmt* new_statement(StmtType type, Expr* expr)
+static Stmt* new_statement(StmtType type, void* realStmt)
 {
     Stmt* stmt = (Stmt*)alloc(sizeof(Stmt));
     memset(stmt, 0, sizeof(Stmt));
     stmt->type = type;
-    stmt->expr = expr;
+    stmt->realStmt = realStmt;
     return stmt;
 }
 
-static Stmt* new_terminated_statement(Node** node, StmtType type, Expr* expr)
+static Stmt* new_terminated_statement(Node** node, StmtType type, void* realStmt)
 {
     if (terminated_statement(node) != NULL) {
-        return new_statement(type, expr);
+        return new_statement(type, realStmt);
     }
 
     return NULL;
@@ -302,20 +302,25 @@ static Stmt* new_terminated_statement(Node** node, StmtType type, Expr* expr)
 static Stmt* print_statement(Node** node)
 {
     Expr* expr = expression(node);
-    return new_terminated_statement(node, STMT_PRINT, expr);
+    PrintStmt* stmt = (PrintStmt*)alloc(sizeof(PrintStmt));
+    stmt->expr = expr;
+    return new_terminated_statement(node, STMT_PRINT, stmt);
 }
 
 static Stmt* expression_statement(Node** node)
 {
     Expr* expr = expression(node);
-    return new_terminated_statement(node, STMT_EXPR, expr);
+    ExprStmt* stmt = (ExprStmt*)alloc(sizeof(ExprStmt));
+    stmt->expr = expr;
+    return new_terminated_statement(node, STMT_EXPR, stmt);
 }
 
 static Stmt* var_statement(Node** node, Expr* initializer, Token variableName)
 {
-    Stmt* stmt = new_terminated_statement(node, STMT_VAR_DECLARATION, initializer);
-    stmt->data = variableName;
-    return stmt;
+    VarDeclarationStmt* stmt = (VarDeclarationStmt*)alloc(sizeof(VarDeclarationStmt));
+    stmt->initializer = initializer;
+    stmt->varName = variableName;
+    return new_terminated_statement(node, STMT_VAR_DECLARATION, stmt);
 }
 
 static Stmt* var_declaration(Node** node)
@@ -400,7 +405,21 @@ static void expr_destroy(Expr* expr)
 void stmt_destroy(void* stmtObj)
 {
     Stmt* stmt = (Stmt*)stmtObj;
-    expr_destroy(stmt->expr);
+    switch (stmt->type) {
+    case STMT_BLOCK:
+        list_foreach(((BlockStmt*)stmt->realStmt)->innerStmts, stmt_destroy);
+        break;
+    case STMT_PRINT:
+        expr_destroy(((PrintStmt*)stmt->realStmt)->expr);
+        break;
+    case STMT_EXPR:
+        expr_destroy(((ExprStmt*)stmt->realStmt)->expr);
+        break;
+    case STMT_VAR_DECLARATION:
+        expr_destroy(((VarDeclarationStmt*)stmt->realStmt)->initializer);
+        break;
+    }
+    fr((void*)stmt);
 }
 
 static void stmts_destroy(List* stmts)
@@ -445,11 +464,13 @@ void* accept(StmtVisitor visitor, Stmt* stmt)
 {
     switch (stmt->type) {
     case STMT_PRINT:
-        return visitor.visitPrintStmt(stmt);
+        return visitor.visitPrintStmt(stmt->realStmt);
     case STMT_EXPR:
-        return visitor.visitExpressionStmt(stmt);
+        return visitor.visitExpressionStmt(stmt->realStmt);
     case STMT_VAR_DECLARATION:
-        return visitor.visitVarDeclarationStmt(stmt);
+        return visitor.visitVarDeclarationStmt(stmt->realStmt);
+    case STMT_BLOCK:
+        return visitor.visitBlock(stmt->realStmt);
     }
     return NULL;
 }

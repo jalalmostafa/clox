@@ -280,11 +280,9 @@ void* visit_var_expr(void* exprObject)
 
 void* visit_print(void* stmtObj)
 {
-    Stmt* stmt = (Stmt*)stmtObj;
+    PrintStmt* stmt = (PrintStmt*)stmtObj;
     Object* obj = eval(stmt->expr);
     double* value = NULL;
-    if (obj == NULL) {
-    }
     switch (obj->type) {
     case STRING_L:
     case BOOL_L:
@@ -306,20 +304,20 @@ void* visit_print(void* stmtObj)
 
 void* visit_expr(void* stmtObj)
 {
-    Stmt* stmt = (Stmt*)stmtObj;
+    ExprStmt* stmt = (ExprStmt*)stmtObj;
     return eval(stmt->expr);
 }
 
 void* visit_var(void* stmtObj)
 {
-    Stmt* stmt = (Stmt*)stmtObj;
+    VarDeclarationStmt* stmt = (VarDeclarationStmt*)stmtObj;
     Object* value = NULL;
-    Token key = stmt->data;
-    if (stmt->expr != NULL) {
-        value = eval(stmt->expr);
+    Token key = stmt->varName;
+    if (stmt->initializer != NULL) {
+        value = eval(stmt->initializer);
     }
     if (!env_add_variable(&GlobalExecutionEnvironment, key.lexeme, value)) {
-        runtime_error("'%s' is already defined", &value, stmt->data.line, stmt->data.lexeme);
+        runtime_error("'%s' is already defined", &value, key.line, key.lexeme);
     }
 
     return value;

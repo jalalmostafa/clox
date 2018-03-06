@@ -68,6 +68,7 @@ typedef struct expression_visitor_t {
 typedef enum stmt_type_t {
     STMT_PRINT,
     STMT_VAR_DECLARATION,
+    STMT_BLOCK,
     STMT_EXPR
 } StmtType;
 
@@ -75,13 +76,30 @@ typedef struct stmt_visitor_t {
     Action visitPrintStmt;
     Action visitVarDeclarationStmt;
     Action visitExpressionStmt;
+    Action visitBlock;
 } StmtVisitor;
 
 typedef struct stmt_t {
     StmtType type;
-    Expr* expr;
-    Token data;
+    void* realStmt;
 } Stmt;
+
+typedef struct stmt_print_t {
+    Expr* expr;
+} PrintStmt;
+
+typedef struct stmt_expr_t {
+    Expr* expr;
+} ExprStmt;
+
+typedef struct stmt_var_declaration_t {
+    Expr* initializer;
+    Token varName;
+} VarDeclarationStmt;
+
+typedef struct stmt_block_t {
+    List* innerStmts;
+} BlockStmt;
 
 typedef struct parser_t {
     List* stmts;
