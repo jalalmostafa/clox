@@ -1,0 +1,10 @@
+language: C
+
+script:
+    - mkdir -p build
+    - cd build
+    - cmake ..
+    - make
+compiler:
+    - clang
+    - gcc
