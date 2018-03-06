@@ -47,5 +47,5 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 message("-- Compiling with ${CMAKE_CXX_FLAGS}")
-
+target_link_libraries(lox m)
 add_executable(lox ${LOX_SRC})
