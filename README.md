@@ -1,5 +1,6 @@
 # C-lox
 
+[![Build Status](https://travis-ci.org/jalalmostafa/clox.svg?branch=master)](https://travis-ci.org/jalalmostafa/clox)
 clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) treewalk interpreter in ANSI C.
 
 Currently working on: [Statements and State](http://craftinginterpreters.com/statements-and-state.html)
