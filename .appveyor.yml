@@ -1,0 +1,8 @@
+configuration: Release
+platform: Any CPU
+
+build_script:
+  - mkdir build/
+  - cd build
+  - cmake ..
+  - cmake --build .
