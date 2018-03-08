@@ -2,7 +2,7 @@ configuration: Release
 platform: Any CPU
 
 build_script:
-  - mkdir build/
+  - mkdir build
   - cd build
   - cmake ..
   - cmake --build .
