@@ -16,6 +16,8 @@ static Expr* mutiplication(Node** node);
 static Expr* unary(Node** node);
 static Expr* primary(Node** node);
 
+static Stmt* block_statements(Node** node);
+
 static int match(TokenType type, TokenType types[], int n, Node** node)
 {
     int i = 0;
@@ -360,6 +362,9 @@ static Stmt* declaration(Node** node)
     if (MATCH(tkn->type, VAR)) {
         (*node) = (*node)->next;
         stmt = var_declaration(node);
+    } else if (MATCH(tkn->type, LEFT_BRACE)) {
+        (*node) = (*node)->next;
+        stmt = block_statements(node);
     } else {
         stmt = statement(node);
     }
@@ -368,6 +373,20 @@ static Stmt* declaration(Node** node)
     }
 
     return stmt;
+}
+
+static Stmt* block_statements(Node** node)
+{
+    Token* token = NULL;
+    BlockStmt* stmt = (BlockStmt*)alloc(sizeof(BlockStmt));
+    stmt->innerStmts = list();
+    token = (Token*)(*node)->data;
+    while (token->type != RIGHT_BRACE && token->type != ENDOFFILE) {
+        list_push(stmt->innerStmts, declaration(node));
+        token = (Token*)(*node)->data;
+    }
+    consume(node, RIGHT_BRACE, "Expect '}' after block.");
+    return new_statement(STMT_BLOCK, (void*)stmt);
 }
 
 static void expr_destroy(Expr* expr)

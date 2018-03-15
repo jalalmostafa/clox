@@ -22,10 +22,12 @@ ExpressionVisitor EvaluateExpressionVisitor = {
 StmtVisitor EvaluateStmtVistior = {
     visit_print,
     visit_var,
-    visit_expr
+    visit_expr,
+    visit_block
 };
 
-ExecutionEnvironment GlobalExecutionEnvironment;
+ExecutionEnvironment GlobalExecutionEnvironment = { NULL, NULL };
+ExecutionEnvironment* CurrentEnv = &GlobalExecutionEnvironment;
 
 static Object* eval(Expr* expr)
 {
@@ -271,7 +273,7 @@ void* visit_literal(void* expr)
 void* visit_var_expr(void* exprObject)
 {
     VariableExpr* expr = (VariableExpr*)exprObject;
-    Object* value = env_get_variable_value(&GlobalExecutionEnvironment, expr->variableName.lexeme);
+    Object* value = env_get_variable_value(CurrentEnv, expr->variableName.lexeme);
     if (value == NULL) {
         runtime_error("Unresolved variable name '%s'", &value, expr->variableName.line, expr->variableName.lexeme);
     }
@@ -316,7 +318,7 @@ void* visit_var(void* stmtObj)
     if (stmt->initializer != NULL) {
         value = eval(stmt->initializer);
     }
-    if (!env_add_variable(&GlobalExecutionEnvironment, key.lexeme, value)) {
+    if (!env_add_variable(CurrentEnv, key.lexeme, value)) {
         runtime_error("'%s' is already defined", &value, key.line, key.lexeme);
     }
 
@@ -331,8 +333,24 @@ void* visit_assign(void* exprObj)
     if (value == NULL) {
         runtime_error("Cannot assign undeclared variable '%s'", &value, expr->variableName.line, expr->variableName.lexeme);
     } else {
-        env_set_variable_value(&GlobalExecutionEnvironment, expr->variableName.lexeme, value);
+        env_set_variable_value(CurrentEnv, expr->variableName.lexeme, value);
     }
 
     return value;
+}
+
+void* visit_block(void* blockObj)
+{
+    BlockStmt* stmt = (BlockStmt*)blockObj;
+    Stmt* innerStmt = NULL;
+    Node* node = NULL;
+    Object* obj = NULL;
+    ExecutionEnvironment env = { NULL, NULL }, *prevEnv = CurrentEnv;
+    CurrentEnv = &env;
+    for (node = stmt->innerStmts->head; node != NULL; node = node->next) {
+        innerStmt = (Stmt*)node->data;
+        obj = accept(EvaluateStmtVistior, innerStmt);
+    }
+    CurrentEnv = prevEnv;
+    return obj;
 }

@@ -7,6 +7,7 @@ typedef LiteralExpr Object;
 
 typedef struct env_t {
     LLDictionary* globalVariables;
+    struct env_t* enclosing;
 } ExecutionEnvironment;
 
 int env_add_variable(ExecutionEnvironment* env, const char* variableName, Object* obj);
@@ -24,6 +25,7 @@ void* visit_assign(void* stmtObj);
 void* visit_print(void* stmt);
 void* visit_expr(void* stmt);
 void* visit_var(void* stmt);
+void* visit_block(void* stmt);
 
 extern ExpressionVisitor EvaluateExpressionVisitor;
 
