@@ -5,6 +5,7 @@
 #include "parse.h"
 #include "readline.h"
 #include "tokenizer.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,11 +35,13 @@ int main(int argc, char* argv[])
         if (argc == 2) {
             char* ret = read_file(argv[1], buf);
             if (ret == NULL) {
-                except("Exceeded Maximum File Size");
+                fprintf(stderr, "%s\n", strerror(errno));
+                except("Exceeded Maximum File Size\n");
             } else {
                 run(buf);
                 env_destroy(&GlobalExecutionEnvironment);
             }
+            getchar();
         } else {
             for (;;) {
                 line = read_line("> ");
@@ -82,8 +85,8 @@ char* read_file(char* filepath, char* buf)
 
         rewind(fp);
     }
-
-    return fread(buf, BUFSIZE, 1, fp) && !fclose(fp) ? buf : NULL;
+    fread(buf, BUFSIZE, 1, fp);
+    return !fclose(fp) ? buf : NULL;
 }
 
 void run(const char* code)
