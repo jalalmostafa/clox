@@ -147,7 +147,7 @@ static Expr* primary(Node** node)
 
     if (MATCH(tkn->type, STRING)) {
         (*node) = (*node)->next;
-        return new_expr(LITERAL, new_literal(tkn->literal, STRING_L, strlen(tkn->literal) + 1));
+        return new_expr(LITERAL, new_literal(clone(tkn->literal, strlen(tkn->literal) + 1), STRING_L, strlen(tkn->literal) + 1));
     }
 
     if (MATCH(tkn->type, NUMBER)) {

@@ -43,7 +43,7 @@ Object* env_get_variable_value(ExecutionEnvironment* env, const char* variableNa
     if (env != NULL) {
         obj = (Object*)lldict_get(env->globalVariables, variableName);
         if (env->enclosing != NULL && obj == NULL) {
-            return env_get_variable_value(env, variableName);
+            return env_get_variable_value(env->enclosing, variableName);
         }
     }
     return obj;

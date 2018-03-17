@@ -345,12 +345,13 @@ void* visit_block(void* blockObj)
     Stmt* innerStmt = NULL;
     Node* node = NULL;
     Object* obj = NULL;
-    ExecutionEnvironment env = { NULL, NULL }, *prevEnv = CurrentEnv;
+    ExecutionEnvironment *prevEnv = CurrentEnv, env = { NULL, prevEnv };
     CurrentEnv = &env;
     for (node = stmt->innerStmts->head; node != NULL; node = node->next) {
         innerStmt = (Stmt*)node->data;
         obj = accept(EvaluateStmtVistior, innerStmt);
     }
+    env_destroy(CurrentEnv);
     CurrentEnv = prevEnv;
     return obj;
 }
