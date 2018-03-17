@@ -42,7 +42,7 @@ Node* list_push(List* list, void* data)
     return newNode;
 }
 
-Node* list_insert(List* list, void* data, int index)
+Node* list_insert(List* list, void* data, unsigned int index)
 {
     if (list == NULL) {
         return NULL;
