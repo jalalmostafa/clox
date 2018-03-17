@@ -19,7 +19,7 @@ typedef int (*Predicate)(Node* n);
 
 List* list();
 Node* list_push(List* list, void* data);
-Node* list_insert(List* list, void* data, int index);
+Node* list_insert(List* list, void* data, unsigned int index);
 int list_remove(List* list, Node* n);
 int list_remove_at(List* list, unsigned int index);
 void list_clear(List* list);
