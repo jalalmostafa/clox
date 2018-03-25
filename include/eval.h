@@ -26,6 +26,9 @@ void* visit_print(void* stmt);
 void* visit_expr(void* stmt);
 void* visit_var(void* stmt);
 void* visit_block(void* stmt);
+void* visit_ifElse(void* stmt);
+void* visit_while(void* stmt);
+void* visit_for(void* stmt);
 
 extern ExpressionVisitor EvaluateExpressionVisitor;
 

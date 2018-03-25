@@ -16,7 +16,8 @@ typedef enum literal_expr_type_t {
     BOOL_L,
     NUMBER_L,
     STRING_L,
-    ERROR_L
+    ERROR_L,
+    VOID_L
 } LiteralType;
 
 typedef struct expression_t {
@@ -61,22 +62,28 @@ typedef struct expression_visitor_t {
     Action visitUnary;
     Action visitLiteral;
     Action visitGrouping;
-    Action visitVariableExpr;
-    Action visitAssignmentExpr;
+    Action visitVariable;
+    Action visitAssignment;
 } ExpressionVisitor;
 
 typedef enum stmt_type_t {
     STMT_PRINT,
     STMT_VAR_DECLARATION,
     STMT_BLOCK,
-    STMT_EXPR
+    STMT_EXPR,
+    STMT_IF_ELSE,
+    STMT_FOR,
+    STMT_WHILE
 } StmtType;
 
 typedef struct stmt_visitor_t {
-    Action visitPrintStmt;
-    Action visitVarDeclarationStmt;
-    Action visitExpressionStmt;
+    Action visitPrint;
+    Action visitVarDeclaration;
+    Action visitExpression;
     Action visitBlock;
+    Action visitIfElse;
+    Action visitFor;
+    Action visitWhile;
 } StmtVisitor;
 
 typedef struct stmt_t {
@@ -101,6 +108,17 @@ typedef struct stmt_block_t {
     List* innerStmts;
 } BlockStmt;
 
+typedef struct stmt_if_t {
+    Expr* condition;
+    Stmt* thenStmt;
+    Stmt* elseStmt;
+} IfElseStmt;
+
+typedef struct stmt_while_t {
+    Expr* condition;
+    Stmt* body;
+} WhileStmt;
+
 typedef struct parser_t {
     List* stmts;
 } ParsingContext;
@@ -113,7 +131,7 @@ void parser_destroy(ParsingContext* ctx);
 #define END_OF_TOKENS(x) ((x) == ENDOFFILE)
 #define MATCH(x, type) ((x) == type)
 
-#define UNKNOWN_IDENTIFIER "Unknown Identifier"
+#define UNKNOWN_IDENTIFIER "Unresolved Identifier"
 #define ERROR_AT_EOF "Syntax Error at end of file: %s\n"
 #define ERROR_AT_LINE "Syntax Error (Line %d): %s '%s'\n"
 #endif

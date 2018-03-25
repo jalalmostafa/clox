@@ -39,14 +39,16 @@ int env_set_variable_value(ExecutionEnvironment* env, const char* variableName, 
 
 Object* env_get_variable_value(ExecutionEnvironment* env, const char* variableName)
 {
-    Object* obj = NULL;
+    Object *obj = NULL, *clonedObj = NULL;
     if (env != NULL) {
         obj = (Object*)lldict_get(env->globalVariables, variableName);
         if (env->enclosing != NULL && obj == NULL) {
             return env_get_variable_value(env->enclosing, variableName);
         }
     }
-    return obj;
+    clonedObj = (Object*)clone(obj, sizeof(Object));
+    clonedObj->value = clone(obj->value, obj->valueSize);
+    return clonedObj;
 }
 
 void env_destroy(ExecutionEnvironment* env)

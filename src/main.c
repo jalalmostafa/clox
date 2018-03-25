@@ -12,7 +12,7 @@
 
 void usage(char* name);
 void header(char* name);
-char* read_file(char* filepath, char* buf);
+char* read_file(char* filepath);
 void run(const char* code);
 
 int main(int argc, char* argv[])
@@ -24,19 +24,16 @@ int main(int argc, char* argv[])
 #endif
     char* name = strrchr(argv[0], separator) + 1;
     char* line = NULL;
-
-    char buf[BUFSIZE];
-    memset(buf, 0, BUFSIZE);
+    char* buf = NULL;
 
     if (argc > 2) {
         usage(name);
     } else {
         header(name);
         if (argc == 2) {
-            char* ret = read_file(argv[1], buf);
-            if (ret == NULL) {
+            buf = read_file(argv[1]);
+            if (buf == NULL) {
                 fprintf(stderr, "%s\n", strerror(errno));
-                except("Exceeded Maximum File Size\n");
             } else {
                 run(buf);
                 env_destroy(&GlobalExecutionEnvironment);
@@ -69,24 +66,34 @@ void header(char* name)
     }
 }
 
-char* read_file(char* filepath, char* buf)
+char* read_file(char* filepath)
 {
     int length = 0;
     FILE* fp = fopen(filepath, "r");
+    char* buf = NULL;
+
     if (fp == NULL) {
+        except("Cannot open file\n");
         return NULL;
     }
 
     if (!fseek(fp, SEEK_SET, SEEK_END)) {
         length = ftell(fp);
         if (!length) {
+            except("Exceeded Maximum File Size\n");
             return NULL;
         }
 
         rewind(fp);
     }
-    fread(buf, BUFSIZE, 1, fp);
-    return !fclose(fp) ? buf : NULL;
+    buf = (char*)malloc(length);
+    memset(buf, 0, length);
+    fread(buf, length, 1, fp);
+    if (!fclose(fp)) {
+        return buf;
+    }
+    fr(buf);
+    return NULL;
 }
 
 void run(const char* code)
