@@ -10,13 +10,29 @@
 #include <stdio.h>
 #include <string.h>
 
+void* visit_binary(void* expr);
+void* visit_unary(void* expr);
+void* visit_grouping(void* expr);
+void* visit_literal(void* expr);
+void* visit_var_expr(void* expr);
+void* visit_assign(void* expr);
+void* visit_logical(void* expr);
+
+void* visit_print(void* stmt);
+void* visit_expr(void* stmt);
+void* visit_var(void* stmt);
+void* visit_block(void* stmt);
+void* visit_ifElse(void* stmt);
+void* visit_while(void* stmt);
+
 ExpressionVisitor EvaluateExpressionVisitor = {
     visit_binary,
     visit_unary,
     visit_literal,
     visit_grouping,
     visit_var_expr,
-    visit_assign
+    visit_assign,
+    visit_logical
 };
 
 StmtVisitor EvaluateStmtVistior = {
@@ -25,7 +41,6 @@ StmtVisitor EvaluateStmtVistior = {
     visit_expr,
     visit_block,
     visit_ifElse,
-    visit_for,
     visit_while
 };
 
@@ -39,6 +54,33 @@ static Object* new_void()
     obj->value = NULL;
     obj->valueSize = 0;
     return obj;
+}
+
+static Object* new_number(double value)
+{
+    double* holder = NULL;
+    Object* result = NULL;
+    result = (Object*)alloc(sizeof(Object));
+    memset(result, 0, sizeof(Object));
+    result->type = NUMBER_L;
+    result->value = alloc(sizeof(double));
+    result->valueSize = sizeof(double);
+    holder = (double*)result->value;
+    *holder = value;
+    return result;
+}
+
+static Object* new_bool(int truthy)
+{
+    Object* result = NULL;
+    const char* truthyValue = truthy ? TRUE_KEY : FALSE_KEY;
+    int valueSize = strlen(truthyValue) + 1;
+    result = (Object*)alloc(sizeof(Object));
+    memset(result, 0, sizeof(Object));
+    result->type = BOOL_L;
+    result->value = clone((void*)truthyValue, valueSize);
+    result->valueSize = valueSize;
+    return result;
 }
 
 static Object* eval(Expr* expr)
@@ -112,31 +154,6 @@ static Object* runtime_error(const char* format, Object** obj, int line, ...)
     (*obj)->value = clone(buffer, len);
     (*obj)->valueSize = 0;
     return *obj;
-}
-
-static Object* new_number(double value)
-{
-    double* holder = NULL;
-    Object* result = NULL;
-    result = (Object*)alloc(sizeof(Object));
-    memset(result, 0, sizeof(Object));
-    result->type = NUMBER_L;
-    result->value = alloc(sizeof(double));
-    result->valueSize = sizeof(double);
-    holder = (double*)result->value;
-    *holder = value;
-    return result;
-}
-
-static Object* new_bool(int truthy)
-{
-    Object* result = NULL;
-    result = (Object*)alloc(sizeof(Object));
-    memset(result, 0, sizeof(Object));
-    result->type = BOOL_L;
-    result->value = clone((void*)likely(truthy), strlen(likely(truthy)) + 1);
-    result->valueSize = strlen(likely(truthy)) + 1;
-    return result;
 }
 
 void* visit_binary(void* expr)
@@ -227,9 +244,8 @@ void* visit_binary(void* expr)
         }
         break;
     case EQUAL_EQUAL:
-        result->type = BOOL_L;
         if (rObject->type == NIL_L && lObject->type == NIL_L) {
-            result->value = clone((void*)likely(1), strlen(likely(1)) + 1);
+            result->value = new_bool(1);
         } else if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
@@ -255,6 +271,8 @@ void* visit_binary(void* expr)
             result = new_bool(1);
         }
         break;
+    case AND:
+    case OR:
     default:
         break;
     }
@@ -317,6 +335,23 @@ void* visit_var_expr(void* exprObject)
     return value;
 }
 
+void* visit_logical(void* exprObj)
+{
+    LogicalExpression* logical = (LogicalExpression*)exprObj;
+    Object* lvalue = eval(logical->left);
+    int lvalueTruth = obj_likely(lvalue);
+    if (logical->op.type == OR) {
+        if (lvalueTruth) {
+            return lvalue;
+        }
+    } else if (logical->op.type == AND) {
+        if (!lvalueTruth) {
+            return lvalue;
+        }
+    }
+    return eval(logical->right);
+}
+
 void* visit_print(void* stmtObj)
 {
     PrintStmt* stmt = (PrintStmt*)stmtObj;
@@ -336,6 +371,8 @@ void* visit_print(void* stmtObj)
         } else {
             printf("%0.0lf\n", floor(*value));
         }
+        break;
+    case VOID_L:
         break;
     }
     return new_void();
@@ -411,10 +448,5 @@ void* visit_while(void* whileObj)
         accept(EvaluateStmtVistior, stmt->body);
     }
 
-    return new_void();
-}
-
-void* visit_for(void* forObj)
-{
     return new_void();
 }

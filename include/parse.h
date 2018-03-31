@@ -8,7 +8,8 @@ typedef enum expr_type_t {
     UNARY,
     LITERAL,
     VARIABLE,
-    ASSIGNMENT
+    ASSIGNMENT,
+    LOGICAL
 } ExpressionType;
 
 typedef enum literal_expr_type_t {
@@ -55,6 +56,12 @@ typedef struct expression_assignmnt_t {
     Expr* rightExpr;
 } AssignmentExpr;
 
+typedef struct expression_logical_t {
+    Expr* left;
+    Expr* right;
+    Token op;
+} LogicalExpression;
+
 typedef void* (*Action)(void*);
 
 typedef struct expression_visitor_t {
@@ -64,6 +71,7 @@ typedef struct expression_visitor_t {
     Action visitGrouping;
     Action visitVariable;
     Action visitAssignment;
+    Action visitLogical;
 } ExpressionVisitor;
 
 typedef enum stmt_type_t {
@@ -72,7 +80,6 @@ typedef enum stmt_type_t {
     STMT_BLOCK,
     STMT_EXPR,
     STMT_IF_ELSE,
-    STMT_FOR,
     STMT_WHILE
 } StmtType;
 
@@ -82,7 +89,6 @@ typedef struct stmt_visitor_t {
     Action visitExpression;
     Action visitBlock;
     Action visitIfElse;
-    Action visitFor;
     Action visitWhile;
 } StmtVisitor;
 

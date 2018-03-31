@@ -15,6 +15,8 @@ static Expr* addition(Node** node);
 static Expr* mutiplication(Node** node);
 static Expr* unary(Node** node);
 static Expr* primary(Node** node);
+static Expr* logicOr(Node** node);
+static Expr* logicAnd(Node** node);
 
 static Stmt* block_statements(Node** node);
 static Stmt* if_statement(Node** node);
@@ -144,7 +146,6 @@ static Expr* primary(Node** node)
 {
     Expr* groupedExpr = NULL;
     Node** n = NULL;
-    int valueSize = 0;
     const Token* tkn = (Token*)(*node)->data;
     double* doubleLiteral = NULL;
 
@@ -250,7 +251,7 @@ static Expr* equality(Node** node)
 
 static Expr* assignment(Node** node)
 {
-    Expr *expr = equality(node), *nextExpr = NULL;
+    Expr *expr = logicOr(node), *nextExpr = NULL;
     Node* equals = *node;
     if (MATCH(((Token*)equals->data)->type, EQUAL)) {
         (*node) = (*node)->next;
@@ -261,6 +262,46 @@ static Expr* assignment(Node** node)
         error(equals, "Invalid Assignment Target");
     }
 
+    return expr;
+}
+
+static Expr* new_logical(Expr* left, Token op, Expr* right)
+{
+    LogicalExpression* logicalExpr = (LogicalExpression*)alloc(sizeof(LogicalExpression));
+    logicalExpr->op = op;
+    logicalExpr->left = left;
+    logicalExpr->right = right;
+    return new_expr(LOGICAL, logicalExpr);
+}
+
+static Expr* logicOr(Node** node)
+{
+    Expr *expr = logicAnd(node), *right = NULL;
+    const Token* tkn = (Token*)(*node)->data;
+    Token* operatorTkn = NULL;
+
+    while (MATCH(tkn->type, OR)) {
+        operatorTkn = (Token*)(*node)->data;
+        (*node) = (*node)->next;
+        tkn = (Token*)(*node)->data;
+        right = logicAnd(node);
+        expr = new_logical(expr, *operatorTkn, right);
+    }
+    return expr;
+}
+
+static Expr* logicAnd(Node** node)
+{
+    Expr *expr = equality(node), *right = NULL;
+    Token *tkn = (Token*)(*node)->data, *operatorTkn = NULL;
+
+    while (MATCH(tkn->type, AND)) {
+        operatorTkn = (Token*)(*node)->data;
+        (*node) = (*node)->next;
+        tkn = (Token*)(*node)->data;
+        right = equality(node);
+        expr = new_logical(expr, *operatorTkn, right);
+    }
     return expr;
 }
 
@@ -380,6 +421,9 @@ static Stmt* statement(Node** node)
     } else if (MATCH(tkn->type, WHILE)) {
         (*node) = (*node)->next;
         return while_statement(node);
+    } else if (MATCH(tkn->type, FOR)) {
+        (*node) = (*node)->next;
+        return for_statement(node);
     }
 
     return expression_statement(node);
@@ -440,7 +484,57 @@ static Stmt* if_statement(Node** node)
 
 static Stmt* for_statement(Node** node)
 {
-    return NULL;
+    consume(node, LEFT_PAREN, "Expect '(' after for");
+    Token* tkn = (Token*)(*node)->data;
+    Stmt *initializer = NULL, *body = NULL;
+    Expr *condition = NULL, *step = NULL;
+    BlockStmt *wrappedBody = NULL, *wrappedForAndInit = NULL;
+    WhileStmt* wrappedFor = NULL;
+    StmtType type = STMT_WHILE;
+    if (MATCH(tkn->type, SEMICOLON)) {
+        (*node) = (*node)->next;
+    } else {
+        (*node) = (*node)->next;
+        if (MATCH(tkn->type, VAR)) {
+            initializer = var_declaration(node);
+        } else {
+            initializer = expression_statement(node);
+        }
+    }
+    tkn = (Token*)(*node)->data;
+    if (!MATCH(tkn->type, SEMICOLON)) {
+        condition = expression(node);
+    }
+    consume(node, SEMICOLON, "Expect ';' after for condition");
+    if (!MATCH(tkn->type, RIGHT_PAREN)) {
+        step = expression(node);
+    }
+    consume(node, RIGHT_PAREN, "Expect ')' for 'for' closing");
+    body = statement(node);
+    if (step != NULL) {
+        wrappedBody = alloc(sizeof(BlockStmt));
+        wrappedBody->innerStmts = list();
+        list_push(wrappedBody->innerStmts, body);
+        list_push(wrappedBody->innerStmts, step);
+        body = new_statement(STMT_BLOCK, wrappedBody);
+    }
+
+    if (condition == NULL) {
+        condition = new_true();
+    }
+    wrappedFor = alloc(sizeof(WhileStmt));
+    wrappedFor->condition = condition;
+    wrappedFor->body = body;
+    body = new_statement(STMT_WHILE, wrappedBody);
+    if (initializer != NULL) {
+        wrappedForAndInit = alloc(sizeof(BlockStmt));
+        wrappedForAndInit->innerStmts = list();
+        list_push(wrappedForAndInit->innerStmts, initializer);
+        list_push(wrappedForAndInit->innerStmts, body);
+        body = new_statement(STMT_BLOCK, wrappedForAndInit);
+        type = STMT_BLOCK;
+    }
+    return new_statement(type, body);
 }
 
 static Stmt* while_statement(Node** node)
@@ -483,6 +577,12 @@ static void expr_destroy(Expr* expr)
     case ASSIGNMENT:
         ex = ((AssignmentExpr*)expr->expr)->rightExpr;
         expr_destroy(ex);
+    case LOGICAL:
+        ex = ((LogicalExpression*)expr->type)->left;
+        expr_destroy(ex);
+        ex = ((LogicalExpression*)expr->type)->right;
+        expr_destroy(ex);
+        break;
     case VARIABLE:
     default:
         break;
@@ -494,6 +594,8 @@ void stmt_destroy(void* stmtObj)
 {
     Stmt* stmt = (Stmt*)stmtObj;
     IfElseStmt* ifStmt = NULL;
+    WhileStmt* whileStmt = NULL;
+
     if (stmt != NULL) {
         switch (stmt->type) {
         case STMT_BLOCK:
@@ -514,9 +616,10 @@ void stmt_destroy(void* stmtObj)
             stmt_destroy(ifStmt->elseStmt);
             expr_destroy(ifStmt->condition);
             break;
-        case STMT_FOR:
-            break;
         case STMT_WHILE:
+            whileStmt = (WhileStmt*)stmt->realStmt;
+            stmt_destroy(whileStmt->body);
+            expr_destroy(whileStmt->condition);
             break;
         }
         fr((void*)stmt);
@@ -557,6 +660,8 @@ void* accept_expr(ExpressionVisitor visitor, Expr* expr)
         return visitor.visitVariable(expr->expr);
     case ASSIGNMENT:
         return visitor.visitAssignment(expr->expr);
+    case LOGICAL:
+        return visitor.visitLogical(expr->expr);
     }
     return NULL;
 }
@@ -574,8 +679,6 @@ void* accept(StmtVisitor visitor, Stmt* stmt)
         return visitor.visitBlock(stmt->realStmt);
     case STMT_IF_ELSE:
         return visitor.visitIfElse(stmt->realStmt);
-    case STMT_FOR:
-        return visitor.visitFor(stmt->realStmt);
     case STMT_WHILE:
         return visitor.visitWhile(stmt->realStmt);
     }
