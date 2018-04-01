@@ -8,5 +8,10 @@ while (a < 10000) {
   b = temp + b;
 }
 
+for(var i = 0; i < 10; i = i + 1) {
+	print i;
+}
 
-
+if(12 < 13 and 4 == 4) {
+	print nil or "hello";
+}

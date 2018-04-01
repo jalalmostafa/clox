@@ -421,9 +421,6 @@ static Stmt* statement(Node** node)
     } else if (MATCH(tkn->type, WHILE)) {
         (*node) = (*node)->next;
         return while_statement(node);
-    } else if (MATCH(tkn->type, FOR)) {
-        (*node) = (*node)->next;
-        return for_statement(node);
     }
 
     return expression_statement(node);
@@ -490,14 +487,15 @@ static Stmt* for_statement(Node** node)
     Expr *condition = NULL, *step = NULL;
     BlockStmt *wrappedBody = NULL, *wrappedForAndInit = NULL;
     WhileStmt* wrappedFor = NULL;
-    StmtType type = STMT_WHILE;
+    ExprStmt* wrappedStep = NULL;
     if (MATCH(tkn->type, SEMICOLON)) {
         (*node) = (*node)->next;
     } else {
-        (*node) = (*node)->next;
         if (MATCH(tkn->type, VAR)) {
+            (*node) = (*node)->next;
             initializer = var_declaration(node);
         } else {
+            (*node) = (*node)->next;
             initializer = expression_statement(node);
         }
     }
@@ -514,27 +512,28 @@ static Stmt* for_statement(Node** node)
     if (step != NULL) {
         wrappedBody = alloc(sizeof(BlockStmt));
         wrappedBody->innerStmts = list();
+        wrappedStep = alloc(sizeof(ExprStmt));
+        wrappedStep->expr = step;
         list_push(wrappedBody->innerStmts, body);
-        list_push(wrappedBody->innerStmts, step);
+        list_push(wrappedBody->innerStmts, new_statement(STMT_EXPR, wrappedStep));
         body = new_statement(STMT_BLOCK, wrappedBody);
     }
 
     if (condition == NULL) {
-        condition = new_true();
+        condition = new_expr(LITERAL, new_true());
     }
     wrappedFor = alloc(sizeof(WhileStmt));
     wrappedFor->condition = condition;
     wrappedFor->body = body;
-    body = new_statement(STMT_WHILE, wrappedBody);
+    body = new_statement(STMT_WHILE, wrappedFor);
     if (initializer != NULL) {
         wrappedForAndInit = alloc(sizeof(BlockStmt));
         wrappedForAndInit->innerStmts = list();
         list_push(wrappedForAndInit->innerStmts, initializer);
         list_push(wrappedForAndInit->innerStmts, body);
         body = new_statement(STMT_BLOCK, wrappedForAndInit);
-        type = STMT_BLOCK;
     }
-    return new_statement(type, body);
+    return body;
 }
 
 static Stmt* while_statement(Node** node)
@@ -577,10 +576,11 @@ static void expr_destroy(Expr* expr)
     case ASSIGNMENT:
         ex = ((AssignmentExpr*)expr->expr)->rightExpr;
         expr_destroy(ex);
+        break;
     case LOGICAL:
-        ex = ((LogicalExpression*)expr->type)->left;
+        ex = ((LogicalExpression*)expr->expr)->left;
         expr_destroy(ex);
-        ex = ((LogicalExpression*)expr->type)->right;
+        ex = ((LogicalExpression*)expr->expr)->right;
         expr_destroy(ex);
         break;
     case VARIABLE:
