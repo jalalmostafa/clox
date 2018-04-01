@@ -30,6 +30,7 @@ int main(int argc, char* argv[])
         usage(name);
     } else {
         header(name);
+        env_init_global();
         if (argc == 2) {
             buf = read_file(argv[1]);
             if (buf == NULL) {
@@ -53,8 +54,8 @@ int main(int argc, char* argv[])
 void usage(char* name)
 {
     header(name);
-    printf("`%s <filename>` to compile a file.\n", name);
-    printf("`%s` to launch compiler.\n", name);
+    printf("`%s <filename>` to interpret a file.\n", name);
+    printf("`%s` to launch REPL interpreter.\n", name);
 }
 
 void header(char* name)
@@ -86,9 +87,10 @@ char* read_file(char* filepath)
 
         rewind(fp);
     }
+    length++;
     buf = (char*)malloc(length);
     memset(buf, 0, length);
-    fread(buf, length, 1, fp);
+    length = fread(buf, 1, length, fp);
     if (!fclose(fp)) {
         return buf;
     }

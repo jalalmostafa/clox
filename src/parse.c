@@ -14,6 +14,7 @@ static Expr* comparison(Node** node);
 static Expr* addition(Node** node);
 static Expr* mutiplication(Node** node);
 static Expr* unary(Node** node);
+static Expr* call(Node** node);
 static Expr* primary(Node** node);
 static Expr* logicOr(Node** node);
 static Expr* logicAnd(Node** node);
@@ -22,6 +23,8 @@ static Stmt* block_statements(Node** node);
 static Stmt* if_statement(Node** node);
 static Stmt* for_statement(Node** node);
 static Stmt* while_statement(Node** node);
+
+static void expr_destroy(Expr* expr);
 
 static int match(TokenType type, TokenType types[], int n, Node** node)
 {
@@ -194,6 +197,58 @@ static Expr* primary(Node** node)
     return NULL;
 }
 
+static CallExpr* new_call(Expr* callee, List* args, Token paren)
+{
+    CallExpr* call = alloc(sizeof(CallExpr));
+    call->callee = callee;
+    call->paren = paren;
+    call->args = args;
+    return call;
+}
+
+static Expr* finish_call(Node** node, Expr* callee)
+{
+    Token *tkn = NULL, *paren = NULL;
+    List* args = list();
+    Expr* arg = NULL;
+    Node** temp = NULL;
+    do {
+        (*node) = (*node)->next;
+        if (args->count > MAX_ARGS) {
+            error(*node, "Cannot have more than %d args");
+            list_destroy(args);
+            expr_destroy(callee);
+            return NULL;
+        }
+        tkn = (Token*)(*node)->data;
+        if (!MATCH(tkn->type, RIGHT_PAREN)) {
+            arg = expression(node);
+        }
+        if (arg != NULL) {
+            list_push(args, arg);
+        }
+        tkn = (Token*)(*node)->data;
+    } while (MATCH(tkn->type, COMMA));
+    temp = consume(node, RIGHT_PAREN, "Expect ')' for function call");
+    paren = (Token*)(*temp)->data;
+    return new_expr(CALL, new_call(callee, args, *paren));
+}
+
+static Expr* call(Node** node)
+{
+    Expr* expr = primary(node);
+    Token* tkn = (Token*)(*node)->data;
+    while (1) {
+        if (MATCH(tkn->type, LEFT_PAREN)) {
+            expr = finish_call(node, expr);
+            tkn = (Token*)(*node)->data;
+        } else {
+            break;
+        }
+    }
+    return expr;
+}
+
 static Expr* unary(Node** node)
 {
     Expr* rightExpr = NULL;
@@ -208,7 +263,7 @@ static Expr* unary(Node** node)
         return new_expr(UNARY, (void*)new_unary(*tknPrev, rightExpr));
     }
 
-    return primary(node);
+    return call(node);
 }
 
 static Expr* mutiplication(Node** node)
@@ -267,7 +322,7 @@ static Expr* assignment(Node** node)
 
 static Expr* new_logical(Expr* left, Token op, Expr* right)
 {
-    LogicalExpression* logicalExpr = (LogicalExpression*)alloc(sizeof(LogicalExpression));
+    LogicalExpr* logicalExpr = (LogicalExpr*)alloc(sizeof(LogicalExpr));
     logicalExpr->op = op;
     logicalExpr->left = left;
     logicalExpr->right = right;
@@ -578,10 +633,15 @@ static void expr_destroy(Expr* expr)
         expr_destroy(ex);
         break;
     case LOGICAL:
-        ex = ((LogicalExpression*)expr->expr)->left;
+        ex = ((LogicalExpr*)expr->expr)->left;
         expr_destroy(ex);
-        ex = ((LogicalExpression*)expr->expr)->right;
+        ex = ((LogicalExpr*)expr->expr)->right;
         expr_destroy(ex);
+        break;
+    case CALL:
+        ex = ((CallExpr*)expr->expr)->callee;
+        expr_destroy(ex);
+        list_destroy(((CallExpr*)expr->expr)->args);
         break;
     case VARIABLE:
     default:
@@ -662,6 +722,8 @@ void* accept_expr(ExpressionVisitor visitor, Expr* expr)
         return visitor.visitAssignment(expr->expr);
     case LOGICAL:
         return visitor.visitLogical(expr->expr);
+    case CALL:
+        return visitor.visitCallable(expr->expr);
     }
     return NULL;
 }

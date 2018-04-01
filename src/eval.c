@@ -17,6 +17,7 @@ void* visit_literal(void* expr);
 void* visit_var_expr(void* expr);
 void* visit_assign(void* expr);
 void* visit_logical(void* expr);
+void* visit_callable(void* exprObj);
 
 void* visit_print(void* stmt);
 void* visit_expr(void* stmt);
@@ -32,7 +33,8 @@ ExpressionVisitor EvaluateExpressionVisitor = {
     visit_grouping,
     visit_var_expr,
     visit_assign,
-    visit_logical
+    visit_logical,
+    visit_callable
 };
 
 StmtVisitor EvaluateStmtVistior = {
@@ -277,10 +279,8 @@ void* visit_binary(void* expr)
         break;
     }
 
-    fr(lObject->value);
-    fr(lObject);
-    fr(rObject->value);
-    fr(rObject);
+    obj_destroy(lObject);
+    obj_destroy(rObject);
     return result;
 }
 
@@ -335,9 +335,23 @@ void* visit_var_expr(void* exprObject)
     return value;
 }
 
+void* visit_assign(void* exprObj)
+{
+    AssignmentExpr* expr = (AssignmentExpr*)exprObj;
+    Object* value = eval(expr->rightExpr);
+
+    if (value == NULL) {
+        runtime_error("Cannot assign undeclared variable '%s'", &value, expr->variableName.line, expr->variableName.lexeme);
+    } else {
+        env_set_variable_value(CurrentEnv, expr->variableName.lexeme, value);
+    }
+
+    return value;
+}
+
 void* visit_logical(void* exprObj)
 {
-    LogicalExpression* logical = (LogicalExpression*)exprObj;
+    LogicalExpr* logical = (LogicalExpr*)exprObj;
     Object* lvalue = eval(logical->left);
     int lvalueTruth = obj_likely(lvalue);
     if (logical->op.type == OR) {
@@ -350,6 +364,40 @@ void* visit_logical(void* exprObj)
         }
     }
     return eval(logical->right);
+}
+
+void* visit_callable(void* exprObj)
+{
+    CallExpr* expr = (CallExpr*)exprObj;
+    Object* callee = eval(expr->callee);
+    Callable* callable = NULL;
+    List* args = list();
+    Node* node = NULL;
+    Expr* arg = NULL;
+    Object* result = NULL;
+    if (expr->args->count != 0) {
+        for (node = expr->args->head; node != NULL; node = node->next) {
+            arg = (Expr*)node->data;
+            list_push(args, eval(arg));
+        }
+    }
+
+    if (callee->type != CALLABLE_L) {
+        list_destroy(args);
+        return runtime_error("Can only call functions and classes.", &callee, expr->paren.line);
+    }
+
+    callable = (Callable*)callee->value;
+
+    if (args->count != callable->arity()) {
+        list_destroy(args);
+        return runtime_error("Expected %d but got %d arguments", &callee, expr->paren.line, args->count, callable->arity());
+    }
+
+    result = callable->call(args);
+    obj_destroy(callee);
+    list_destroy(args);
+    return result;
 }
 
 void* visit_print(void* stmtObj)
@@ -375,7 +423,7 @@ void* visit_print(void* stmtObj)
     case VOID_L:
         break;
     }
-    return new_void();
+    return obj;
 }
 
 void* visit_expr(void* stmtObj)
@@ -394,20 +442,6 @@ void* visit_var(void* stmtObj)
     }
     if (!env_add_variable(CurrentEnv, key.lexeme, value)) {
         runtime_error("'%s' is already defined", &value, key.line, key.lexeme);
-    }
-
-    return value;
-}
-
-void* visit_assign(void* exprObj)
-{
-    AssignmentExpr* expr = (AssignmentExpr*)exprObj;
-    Object* value = eval(expr->rightExpr);
-
-    if (value == NULL) {
-        runtime_error("Cannot assign undeclared variable '%s'", &value, expr->variableName.line, expr->variableName.lexeme);
-    } else {
-        env_set_variable_value(CurrentEnv, expr->variableName.lexeme, value);
     }
 
     return value;
@@ -449,4 +483,39 @@ void* visit_while(void* whileObj)
     }
 
     return new_void();
+}
+
+void obj_destroy(Object* obj)
+{
+    Callable* callable = NULL;
+    if (obj != NULL) {
+        switch (obj->type) {
+        case NIL_L:
+        case BOOL_L:
+        case NUMBER_L:
+        case STRING_L:
+        case ERROR_L:
+        case VOID_L:
+            fr(obj->value);
+            fr(obj);
+            break;
+        case CALLABLE_L:
+            callable = (Callable*)obj->value;
+            fr(obj->value);
+            fr(obj);
+            break;
+        default:
+            runtime_error("Unknown Object to destroy", &obj, 0);
+            break;
+        }
+    }
+}
+
+Object* obj_new(LiteralType type, void* value, int valueSize)
+{
+    Object* obj = alloc(sizeof(Object));
+    obj->type = type;
+    obj->value = value;
+    obj->valueSize = valueSize;
+    return obj;
 }

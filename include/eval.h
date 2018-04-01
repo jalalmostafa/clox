@@ -4,16 +4,26 @@
 #include "parse.h"
 
 typedef LiteralExpr Object;
+typedef Object* (*CallFunc)(List* args);
+
+typedef struct callable_t {
+    int (*arity)();
+    CallFunc call;
+} Callable;
 
 typedef struct env_t {
-    LLDictionary* globalVariables;
+    LLDictionary* variables;
     struct env_t* enclosing;
 } ExecutionEnvironment;
 
+void env_init_global();
 int env_add_variable(ExecutionEnvironment* env, const char* variableName, Object* obj);
 int env_set_variable_value(ExecutionEnvironment* env, const char* variableName, Object* obj);
 Object* env_get_variable_value(ExecutionEnvironment* env, const char* variableName);
 void env_destroy(ExecutionEnvironment* env);
+
+void obj_destroy(Object* obj);
+Object* obj_new(LiteralType type, void* value, int valueSize);
 
 extern ExpressionVisitor EvaluateExpressionVisitor;
 

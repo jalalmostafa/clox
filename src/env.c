@@ -1,15 +1,43 @@
 #include "ds/lldict.h"
 #include "eval.h"
 #include "mem.h"
+#include <time.h>
+
+static int clock_arity() { return 0; }
+static Object* clock_do(List* args)
+{
+    time_t ts = time(NULL);
+    double* timestamp = alloc(sizeof(double));
+    *timestamp = (double)ts;
+    return obj_new(NUMBER_L, timestamp, sizeof(double));
+}
+
+static Object* env_clock()
+{
+    Object* clock = NULL;
+    Callable* callableClock = alloc(sizeof(Callable));
+    callableClock->arity = clock_arity;
+    callableClock->call = clock_do;
+    clock = obj_new(CALLABLE_L, callableClock, sizeof(Callable));
+    return clock;
+}
+
+void env_init_global()
+{
+    ExecutionEnvironment* env = &GlobalExecutionEnvironment;
+    if (env != NULL) {
+        if (env->variables == NULL) {
+            env->variables = lldict();
+        }
+    }
+    env_add_variable(env, "clock", env_clock());
+}
 
 static void env_init(ExecutionEnvironment* env)
 {
     if (env != NULL) {
-        if (env->globalVariables == NULL) {
-            env->globalVariables = lldict();
-        }
-        if (env->enclosing == NULL) {
-            env->enclosing = NULL;
+        if (env->variables == NULL) {
+            env->variables = lldict();
         }
     }
 }
@@ -18,7 +46,7 @@ int env_add_variable(ExecutionEnvironment* env, const char* variableName, Object
 {
     env_init(env);
     if (env != NULL) {
-        return lldict_add(env->globalVariables, variableName, obj);
+        return lldict_add(env->variables, variableName, obj);
     }
     return 0;
 }
@@ -27,8 +55,8 @@ int env_set_variable_value(ExecutionEnvironment* env, const char* variableName, 
 {
     env_init(env);
     if (env != NULL) {
-        if (lldict_contains(env->globalVariables, variableName)) {
-            return lldict_set(env->globalVariables, variableName, obj);
+        if (lldict_contains(env->variables, variableName)) {
+            return lldict_set(env->variables, variableName, obj);
         }
         if (env->enclosing != NULL) {
             return env_set_variable_value(env->enclosing, variableName, obj);
@@ -41,7 +69,7 @@ Object* env_get_variable_value(ExecutionEnvironment* env, const char* variableNa
 {
     Object *obj = NULL, *clonedObj = NULL;
     if (env != NULL) {
-        obj = (Object*)lldict_get(env->globalVariables, variableName);
+        obj = (Object*)lldict_get(env->variables, variableName);
         if (env->enclosing != NULL && obj == NULL) {
             return env_get_variable_value(env->enclosing, variableName);
         }
@@ -53,6 +81,6 @@ Object* env_get_variable_value(ExecutionEnvironment* env, const char* variableNa
 
 void env_destroy(ExecutionEnvironment* env)
 {
-    lldict_destroy(env->globalVariables);
-    env->globalVariables = NULL;
+    lldict_destroy(env->variables);
+    env->variables = NULL;
 }

@@ -9,7 +9,8 @@ typedef enum expr_type_t {
     LITERAL,
     VARIABLE,
     ASSIGNMENT,
-    LOGICAL
+    LOGICAL,
+    CALL
 } ExpressionType;
 
 typedef enum literal_expr_type_t {
@@ -18,7 +19,8 @@ typedef enum literal_expr_type_t {
     NUMBER_L,
     STRING_L,
     ERROR_L,
-    VOID_L
+    VOID_L,
+    CALLABLE_L
 } LiteralType;
 
 typedef struct expression_t {
@@ -60,7 +62,13 @@ typedef struct expression_logical_t {
     Expr* left;
     Expr* right;
     Token op;
-} LogicalExpression;
+} LogicalExpr;
+
+typedef struct expression_call_t {
+    Expr* callee;
+    Token paren;
+    List* args;
+} CallExpr;
 
 typedef void* (*Action)(void*);
 
@@ -72,6 +80,7 @@ typedef struct expression_visitor_t {
     Action visitVariable;
     Action visitAssignment;
     Action visitLogical;
+    Action visitCallable;
 } ExpressionVisitor;
 
 typedef enum stmt_type_t {
@@ -140,4 +149,6 @@ void parser_destroy(ParsingContext* ctx);
 #define UNKNOWN_IDENTIFIER "Unresolved Identifier"
 #define ERROR_AT_EOF "Syntax Error at end of file: %s\n"
 #define ERROR_AT_LINE "Syntax Error (Line %d): %s '%s'\n"
+#define MAX_ARGS 8
+
 #endif
