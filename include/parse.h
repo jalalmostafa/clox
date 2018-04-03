@@ -89,7 +89,8 @@ typedef enum stmt_type_t {
     STMT_BLOCK,
     STMT_EXPR,
     STMT_IF_ELSE,
-    STMT_WHILE
+    STMT_WHILE,
+    STMT_FUN
 } StmtType;
 
 typedef struct stmt_visitor_t {
@@ -99,6 +100,7 @@ typedef struct stmt_visitor_t {
     Action visitBlock;
     Action visitIfElse;
     Action visitWhile;
+    Action visitFun;
 } StmtVisitor;
 
 typedef struct stmt_t {
@@ -133,6 +135,12 @@ typedef struct stmt_while_t {
     Expr* condition;
     Stmt* body;
 } WhileStmt;
+
+typedef struct stmt_fun_t {
+    List* args;
+    Token name;
+    Stmt* body;
+} FunStmt;
 
 typedef struct parser_t {
     List* stmts;

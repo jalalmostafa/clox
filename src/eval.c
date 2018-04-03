@@ -25,6 +25,9 @@ void* visit_var(void* stmt);
 void* visit_block(void* stmt);
 void* visit_ifElse(void* stmt);
 void* visit_while(void* stmt);
+void* visit_fun(void* funObj);
+
+static void execute_block(BlockStmt* stmt);
 
 ExpressionVisitor EvaluateExpressionVisitor = {
     visit_binary,
@@ -43,7 +46,8 @@ StmtVisitor EvaluateStmtVistior = {
     visit_expr,
     visit_block,
     visit_ifElse,
-    visit_while
+    visit_while,
+    visit_fun
 };
 
 ExecutionEnvironment GlobalExecutionEnvironment = { NULL, NULL };
@@ -389,12 +393,12 @@ void* visit_callable(void* exprObj)
 
     callable = (Callable*)callee->value;
 
-    if (args->count != callable->arity()) {
+    if (args->count != callable->arity) {
         list_destroy(args);
-        return runtime_error("Expected %d but got %d arguments", &callee, expr->paren.line, args->count, callable->arity());
+        return runtime_error("Expected %d but got %d arguments", &callee, expr->paren.line, args->count, callable->arity);
     }
 
-    result = callable->call(args);
+    result = callable->call(args, callable->declaration);
     obj_destroy(callee);
     list_destroy(args);
     return result;
@@ -403,6 +407,7 @@ void* visit_callable(void* exprObj)
 void* visit_print(void* stmtObj)
 {
     PrintStmt* stmt = (PrintStmt*)stmtObj;
+    Callable* call = NULL;
     Object* obj = eval(stmt->expr);
     double* value = NULL;
     switch (obj->type) {
@@ -420,6 +425,9 @@ void* visit_print(void* stmtObj)
             printf("%0.0lf\n", floor(*value));
         }
         break;
+    case CALLABLE_L:
+        call = (Callable*)obj->value;
+        printf("<fn %p>", call->call);
     case VOID_L:
         break;
     }
@@ -447,6 +455,16 @@ void* visit_var(void* stmtObj)
     return value;
 }
 
+static void execute_block(BlockStmt* stmt)
+{
+    Stmt* innerStmt = NULL;
+    Node* node = NULL;
+    for (node = stmt->innerStmts->head; node != NULL; node = node->next) {
+        innerStmt = (Stmt*)node->data;
+        accept(EvaluateStmtVistior, innerStmt);
+    }
+}
+
 void* visit_block(void* blockObj)
 {
     BlockStmt* stmt = (BlockStmt*)blockObj;
@@ -454,10 +472,7 @@ void* visit_block(void* blockObj)
     Node* node = NULL;
     ExecutionEnvironment *prevEnv = CurrentEnv, env = { NULL, prevEnv };
     CurrentEnv = &env;
-    for (node = stmt->innerStmts->head; node != NULL; node = node->next) {
-        innerStmt = (Stmt*)node->data;
-        accept(EvaluateStmtVistior, innerStmt);
-    }
+    execute_block(stmt);
     env_destroy(CurrentEnv);
     CurrentEnv = prevEnv;
     return new_void();
@@ -482,6 +497,43 @@ void* visit_while(void* whileObj)
         accept(EvaluateStmtVistior, stmt->body);
     }
 
+    return new_void();
+}
+
+static Object* fun_call(List* args, void* declaration)
+{
+    FunStmt* funDecl = (FunStmt*)declaration;
+    Token* tkn = NULL;
+    Node *node = NULL, *valueWrapper = NULL;
+    int i = 0;
+    Object* value = NULL;
+    ExecutionEnvironment *prevEnv = CurrentEnv, env = { NULL, prevEnv };
+    CurrentEnv = &env;
+
+    for (node = funDecl->args->head; node != NULL; node = node->next) {
+        tkn = (Token*)node->data;
+        valueWrapper = list_at(args, i);
+        if (valueWrapper != NULL) {
+            value = (Object*)valueWrapper->data;
+            env_add_variable(CurrentEnv, tkn->lexeme, value);
+        }
+        i++;
+    }
+    execute_block((BlockStmt*)funDecl->body->realStmt);
+    env_destroy(CurrentEnv);
+    CurrentEnv = prevEnv;
+    return new_void();
+}
+
+void* visit_fun(void* funObj)
+{
+    FunStmt* stmt = (FunStmt*)funObj;
+    Callable* call = alloc(sizeof(Callable));
+    call->call = fun_call;
+    call->arity = stmt->args->count;
+    call->declaration = (void*)stmt;
+    Object* obj = obj_new(CALLABLE_L, call, sizeof(Callable));
+    env_add_variable(CurrentEnv, stmt->name.lexeme, obj);
     return new_void();
 }
 

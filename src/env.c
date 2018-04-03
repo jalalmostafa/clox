@@ -3,8 +3,7 @@
 #include "mem.h"
 #include <time.h>
 
-static int clock_arity() { return 0; }
-static Object* clock_do(List* args)
+static Object* clock_do(List* args, void* decl)
 {
     time_t ts = time(NULL);
     double* timestamp = alloc(sizeof(double));
@@ -16,7 +15,8 @@ static Object* env_clock()
 {
     Object* clock = NULL;
     Callable* callableClock = alloc(sizeof(Callable));
-    callableClock->arity = clock_arity;
+    callableClock->arity = 0;
+    callableClock->declaration = NULL;
     callableClock->call = clock_do;
     clock = obj_new(CALLABLE_L, callableClock, sizeof(Callable));
     return clock;

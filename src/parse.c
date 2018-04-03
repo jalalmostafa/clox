@@ -23,6 +23,7 @@ static Stmt* block_statements(Node** node);
 static Stmt* if_statement(Node** node);
 static Stmt* for_statement(Node** node);
 static Stmt* while_statement(Node** node);
+static Stmt* fun_statement(const char* type, Node** node);
 
 static void expr_destroy(Expr* expr);
 
@@ -488,6 +489,9 @@ static Stmt* declaration(Node** node)
     if (MATCH(tkn->type, VAR)) {
         (*node) = (*node)->next;
         stmt = var_declaration(node);
+    } else if (MATCH(tkn->type, FUN)) {
+        (*node) = (*node)->next;
+        return fun_statement("function", node);
     } else {
         stmt = statement(node);
     }
@@ -606,6 +610,52 @@ static Stmt* while_statement(Node** node)
     return new_statement(STMT_WHILE, realStmt);
 }
 
+static Stmt* fun_statement(const char* kind, Node** node)
+{
+    Token *name = NULL, *tkn = NULL;
+    Node** temp = NULL;
+    List* params = NULL;
+    Stmt* body = NULL;
+    FunStmt* fnStmt = NULL;
+    char buf[LINEBUFSIZE];
+    memset(buf, 0, LINEBUFSIZE);
+    sprintf(buf, "Expect %s name.", kind);
+    temp = consume(node, IDENTIFIER, buf);
+    name = (Token*)(*temp)->data;
+    if (temp == NULL) {
+        // do something about misssing fun name
+    }
+    memset(buf, 0, LINEBUFSIZE);
+    sprintf(buf, "Expect '(' after %s name.", kind);
+    consume(node, LEFT_PAREN, buf);
+    params = list();
+    tkn = (Token*)(*node)->data;
+    if (!MATCH(tkn->type, RIGHT_PAREN)) {
+        do {
+            if (params->count > MAX_ARGS) {
+                error(*node, "Cannot have more than 8 parameters.");
+            }
+            temp = consume(node, IDENTIFIER, "Expect parameter name.");
+            tkn = (Token*)(*temp)->data;
+            list_push(params, tkn);
+            tkn = (Token*)(*node)->data;
+            if (!MATCH(tkn->type, RIGHT_PAREN)) {
+                (*node) = (*node)->next;
+            }
+        } while (MATCH(tkn->type, COMMA));
+    }
+    consume(node, RIGHT_PAREN, "Expect ')' after parameters.");
+    memset(buf, 0, LINEBUFSIZE);
+    sprintf(buf, "Expect '{' before %s body.", kind);
+    consume(node, LEFT_BRACE, buf);
+    body = block_statements(node);
+    fnStmt = alloc(sizeof(FunStmt));
+    fnStmt->name = *name;
+    fnStmt->body = body;
+    fnStmt->args = params;
+    return new_statement(STMT_FUN, fnStmt);
+}
+
 static void expr_destroy(Expr* expr)
 {
     Expr* ex = NULL;
@@ -655,6 +705,7 @@ void stmt_destroy(void* stmtObj)
     Stmt* stmt = (Stmt*)stmtObj;
     IfElseStmt* ifStmt = NULL;
     WhileStmt* whileStmt = NULL;
+    FunStmt* fnStmt = NULL;
 
     if (stmt != NULL) {
         switch (stmt->type) {
@@ -680,6 +731,11 @@ void stmt_destroy(void* stmtObj)
             whileStmt = (WhileStmt*)stmt->realStmt;
             stmt_destroy(whileStmt->body);
             expr_destroy(whileStmt->condition);
+            break;
+        case STMT_FUN:
+            fnStmt = (FunStmt*)stmt->realStmt;
+            list_destroy(fnStmt->args);
+            stmt_destroy(fnStmt->body);
             break;
         }
         fr((void*)stmt);
@@ -743,6 +799,8 @@ void* accept(StmtVisitor visitor, Stmt* stmt)
         return visitor.visitIfElse(stmt->realStmt);
     case STMT_WHILE:
         return visitor.visitWhile(stmt->realStmt);
+    case STMT_FUN:
+        return visitor.visitFun(stmt->realStmt);
     }
     return NULL;
 }

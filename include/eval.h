@@ -4,11 +4,12 @@
 #include "parse.h"
 
 typedef LiteralExpr Object;
-typedef Object* (*CallFunc)(List* args);
+typedef Object* (*CallFunc)(List* args, void* declaration);
 
 typedef struct callable_t {
-    int (*arity)();
+    unsigned int arity;
     CallFunc call;
+    void* declaration;
 } Callable;
 
 typedef struct env_t {
@@ -33,5 +34,4 @@ extern ExecutionEnvironment GlobalExecutionEnvironment;
 
 #define OPERAND_NUMBER "Syntax Error: Operands must be numbers at line: %d"
 #define OPERAND_SAMETYPE "Syntax Error: Operands must be two numbers or two strings at line: %d"
-
 #endif
