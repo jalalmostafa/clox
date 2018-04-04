@@ -5,3 +5,10 @@ fun add(a, b) {
 }
 
 add(1,2);
+
+fun sub(a, b) {
+  return a - b;
+  print "blabla";
+}
+
+print sub(2, 3);

@@ -24,6 +24,7 @@ static Stmt* if_statement(Node** node);
 static Stmt* for_statement(Node** node);
 static Stmt* while_statement(Node** node);
 static Stmt* fun_statement(const char* type, Node** node);
+static Stmt* return_statement(Node** node);
 
 static void expr_destroy(Expr* expr);
 
@@ -477,6 +478,9 @@ static Stmt* statement(Node** node)
     } else if (MATCH(tkn->type, WHILE)) {
         (*node) = (*node)->next;
         return while_statement(node);
+    } else if (MATCH(tkn->type, RETURN)) {
+        (*node) = (*node)->next;
+        return return_statement(node);
     }
 
     return expression_statement(node);
@@ -737,9 +741,27 @@ void stmt_destroy(void* stmtObj)
             list_destroy(fnStmt->args);
             stmt_destroy(fnStmt->body);
             break;
+        case STMT_RETURN:
+            expr_destroy(((ReturnStmt*)stmt->realStmt)->value);
+            break;
         }
         fr((void*)stmt);
     }
+}
+
+static Stmt* return_statement(Node** node)
+{
+    Token *keyword = (Token*)(*node)->prev->data, *tkn = (Token*)(*node)->data;
+    Expr* value = NULL;
+    ReturnStmt* returnStmt = NULL;
+    if (!MATCH(tkn->type, SEMICOLON)) {
+        value = expression(node);
+    }
+    consume(node, SEMICOLON, "Expect ';' after return");
+    returnStmt = (ReturnStmt*)alloc(sizeof(ReturnStmt));
+    returnStmt->keyword = *keyword;
+    returnStmt->value = value;
+    return new_statement(STMT_RETURN, returnStmt);
 }
 
 static void stmts_destroy(List* stmts)
@@ -801,6 +823,8 @@ void* accept(StmtVisitor visitor, Stmt* stmt)
         return visitor.visitWhile(stmt->realStmt);
     case STMT_FUN:
         return visitor.visitFun(stmt->realStmt);
+    case STMT_RETURN:
+        return visitor.visitReturn(stmt->realStmt);
     }
     return NULL;
 }

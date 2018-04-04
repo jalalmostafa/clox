@@ -26,8 +26,9 @@ void* visit_block(void* stmt);
 void* visit_ifElse(void* stmt);
 void* visit_while(void* stmt);
 void* visit_fun(void* funObj);
+void* visit_return(void* returnObj);
 
-static void execute_block(BlockStmt* stmt);
+static Object* execute_block(BlockStmt* stmt);
 
 ExpressionVisitor EvaluateExpressionVisitor = {
     visit_binary,
@@ -47,7 +48,8 @@ StmtVisitor EvaluateStmtVistior = {
     visit_block,
     visit_ifElse,
     visit_while,
-    visit_fun
+    visit_fun,
+    visit_return
 };
 
 ExecutionEnvironment GlobalExecutionEnvironment = { NULL, NULL };
@@ -455,14 +457,19 @@ void* visit_var(void* stmtObj)
     return value;
 }
 
-static void execute_block(BlockStmt* stmt)
+static Object* execute_block(BlockStmt* stmt)
 {
     Stmt* innerStmt = NULL;
     Node* node = NULL;
     for (node = stmt->innerStmts->head; node != NULL; node = node->next) {
         innerStmt = (Stmt*)node->data;
-        accept(EvaluateStmtVistior, innerStmt);
+        if (innerStmt->type == STMT_RETURN) {
+            return accept(EvaluateStmtVistior, innerStmt);
+        } else {
+            accept(EvaluateStmtVistior, innerStmt);
+        }
     }
+    return new_void();
 }
 
 void* visit_block(void* blockObj)
@@ -519,10 +526,10 @@ static Object* fun_call(List* args, void* declaration)
         }
         i++;
     }
-    execute_block((BlockStmt*)funDecl->body->realStmt);
+    value = execute_block((BlockStmt*)funDecl->body->realStmt);
     env_destroy(CurrentEnv);
     CurrentEnv = prevEnv;
-    return new_void();
+    return value;
 }
 
 void* visit_fun(void* funObj)
@@ -535,6 +542,18 @@ void* visit_fun(void* funObj)
     Object* obj = obj_new(CALLABLE_L, call, sizeof(Callable));
     env_add_variable(CurrentEnv, stmt->name.lexeme, obj);
     return new_void();
+}
+
+void* visit_return(void* returnObj)
+{
+    Object* value = new_void();
+    ReturnStmt* stmt = (ReturnStmt*)returnObj;
+    if (stmt->value != NULL) {
+        obj_destroy(value);
+        value = eval(stmt->value);
+    }
+
+    return value;
 }
 
 void obj_destroy(Object* obj)
