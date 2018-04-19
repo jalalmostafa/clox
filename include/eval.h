@@ -31,7 +31,7 @@ Object* obj_new(LiteralType type, void* value, int valueSize);
 
 extern ExpressionVisitor EvaluateExpressionVisitor;
 
-extern StmtVisitor EvaluateStmtVistior;
+extern StmtVisitor EvaluateStmtVisitor;
 
 extern ExecutionEnvironment GlobalExecutionEnvironment;
 

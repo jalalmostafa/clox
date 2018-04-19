@@ -41,7 +41,7 @@ ExpressionVisitor EvaluateExpressionVisitor = {
     visit_callable
 };
 
-StmtVisitor EvaluateStmtVistior = {
+StmtVisitor EvaluateStmtVisitor = {
     visit_print,
     visit_var,
     visit_expr,
@@ -464,9 +464,9 @@ static Object* execute_block(BlockStmt* stmt)
     for (node = stmt->innerStmts->head; node != NULL; node = node->next) {
         innerStmt = (Stmt*)node->data;
         if (innerStmt->type == STMT_RETURN) {
-            return accept(EvaluateStmtVistior, innerStmt);
+            return accept(EvaluateStmtVisitor, innerStmt);
         } else {
-            accept(EvaluateStmtVistior, innerStmt);
+            accept(EvaluateStmtVisitor, innerStmt);
         }
     }
     return new_void();
@@ -490,9 +490,9 @@ void* visit_ifElse(void* ifElseObj)
     IfElseStmt* stmt = (IfElseStmt*)ifElseObj;
     Object* evalCond = eval(stmt->condition);
     if (obj_likely(evalCond)) {
-        return accept(EvaluateStmtVistior, stmt->thenStmt);
+        return accept(EvaluateStmtVisitor, stmt->thenStmt);
     } else if (stmt->elseStmt != NULL) {
-        return accept(EvaluateStmtVistior, stmt->elseStmt);
+        return accept(EvaluateStmtVisitor, stmt->elseStmt);
     }
     return new_void();
 }
@@ -501,7 +501,7 @@ void* visit_while(void* whileObj)
 {
     WhileStmt* stmt = (WhileStmt*)whileObj;
     while (obj_likely(eval(stmt->condition))) {
-        accept(EvaluateStmtVistior, stmt->body);
+        accept(EvaluateStmtVisitor, stmt->body);
     }
 
     return new_void();
