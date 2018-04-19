@@ -400,7 +400,7 @@ void* visit_callable(void* exprObj)
         return runtime_error("Expected %d but got %d arguments", &callee, expr->paren.line, args->count, callable->arity);
     }
 
-    result = callable->call(args, callable->declaration);
+    result = callable->call(args, callable->declaration, callable->closure);
     obj_destroy(callee);
     list_destroy(args);
     return result;
@@ -429,7 +429,7 @@ void* visit_print(void* stmtObj)
         break;
     case CALLABLE_L:
         call = (Callable*)obj->value;
-        printf("<fn %p>", call->call);
+        printf("<fn %s>\n", ((FunStmt*)call->declaration)->name.lexeme);
     case VOID_L:
         break;
     }
@@ -507,14 +507,15 @@ void* visit_while(void* whileObj)
     return new_void();
 }
 
-static Object* fun_call(List* args, void* declaration)
+static Object* fun_call(List* args, void* declaration, ExecutionEnvironment closure)
 {
     FunStmt* funDecl = (FunStmt*)declaration;
     Token* tkn = NULL;
     Node *node = NULL, *valueWrapper = NULL;
     int i = 0;
     Object* value = NULL;
-    ExecutionEnvironment *prevEnv = CurrentEnv, env = { NULL, prevEnv };
+    ExecutionEnvironment *prevEnv = CurrentEnv, env = closure;
+    env.enclosing = prevEnv;
     CurrentEnv = &env;
 
     for (node = funDecl->args->head; node != NULL; node = node->next) {
@@ -527,7 +528,6 @@ static Object* fun_call(List* args, void* declaration)
         i++;
     }
     value = execute_block((BlockStmt*)funDecl->body->realStmt);
-    env_destroy(CurrentEnv);
     CurrentEnv = prevEnv;
     return value;
 }
@@ -535,11 +535,14 @@ static Object* fun_call(List* args, void* declaration)
 void* visit_fun(void* funObj)
 {
     FunStmt* stmt = (FunStmt*)funObj;
-    Callable* call = alloc(sizeof(Callable));
+    Object* obj = NULL;
+    Callable* call = (Callable*)alloc(sizeof(Callable));
+    memset(call, 0, sizeof(Callable));
     call->call = fun_call;
     call->arity = stmt->args->count;
     call->declaration = (void*)stmt;
-    Object* obj = obj_new(CALLABLE_L, call, sizeof(Callable));
+    call->closure = *CurrentEnv;
+    obj = obj_new(CALLABLE_L, call, sizeof(Callable));
     env_add_variable(CurrentEnv, stmt->name.lexeme, obj);
     return new_void();
 }
@@ -572,6 +575,7 @@ void obj_destroy(Object* obj)
             break;
         case CALLABLE_L:
             callable = (Callable*)obj->value;
+            //env_destroy(&callable->closure);
             fr(obj->value);
             fr(obj);
             break;

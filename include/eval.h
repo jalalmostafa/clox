@@ -4,19 +4,22 @@
 #include "parse.h"
 
 typedef LiteralExpr Object;
-typedef Object* (*CallFunc)(List* args, void* declaration);
-
-typedef struct callable_t {
-    unsigned int arity;
-    CallFunc call;
-    void* declaration;
-} Callable;
 
 typedef struct env_t {
     LLDictionary* variables;
     struct env_t* enclosing;
 } ExecutionEnvironment;
 
+typedef Object* (*CallFunc)(List* args, void* declaration, ExecutionEnvironment env);
+
+typedef struct callable_t {
+    unsigned int arity;
+    CallFunc call;
+    void* declaration;
+    ExecutionEnvironment closure;
+} Callable;
+
+void env_init(ExecutionEnvironment* env);
 void env_init_global();
 int env_add_variable(ExecutionEnvironment* env, const char* variableName, Object* obj);
 int env_set_variable_value(ExecutionEnvironment* env, const char* variableName, Object* obj);

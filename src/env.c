@@ -1,9 +1,10 @@
 #include "ds/lldict.h"
 #include "eval.h"
 #include "mem.h"
+#include <string.h>
 #include <time.h>
 
-static Object* clock_do(List* args, void* decl)
+static Object* clock_do(List* args, void* decl, ExecutionEnvironment closure)
 {
     time_t ts = time(NULL);
     double* timestamp = alloc(sizeof(double));
@@ -15,6 +16,7 @@ static Object* env_clock()
 {
     Object* clock = NULL;
     Callable* callableClock = alloc(sizeof(Callable));
+    memset(callableClock, 0, sizeof(Callable));
     callableClock->arity = 0;
     callableClock->declaration = NULL;
     callableClock->call = clock_do;
@@ -33,7 +35,7 @@ void env_init_global()
     env_add_variable(env, "clock", env_clock());
 }
 
-static void env_init(ExecutionEnvironment* env)
+void env_init(ExecutionEnvironment* env)
 {
     if (env != NULL) {
         if (env->variables == NULL) {

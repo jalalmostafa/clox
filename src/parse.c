@@ -627,7 +627,7 @@ static Stmt* fun_statement(const char* kind, Node** node)
     temp = consume(node, IDENTIFIER, buf);
     name = (Token*)(*temp)->data;
     if (temp == NULL) {
-        // do something about misssing fun name
+        // do something about missing fun name
     }
     memset(buf, 0, LINEBUFSIZE);
     sprintf(buf, "Expect '(' after %s name.", kind);
