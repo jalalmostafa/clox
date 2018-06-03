@@ -533,7 +533,7 @@ void* visit_fun(Stmt* stmt)
     memset(call, 0, sizeof(Callable));
     call->call = fun_call;
     call->arity = funStmt->args->count;
-    call->declaration = (void*)stmt;
+    call->declaration = (void*)funStmt;
     call->closure = *CurrentEnv;
     obj = obj_new(CALLABLE_L, call, sizeof(Callable));
     env_add_variable(CurrentEnv, funStmt->name.lexeme, obj);
