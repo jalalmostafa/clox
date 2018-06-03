@@ -10,23 +10,27 @@
 #include <stdio.h>
 #include <string.h>
 
-void* visit_binary(void* expr);
-void* visit_unary(void* expr);
-void* visit_grouping(void* expr);
-void* visit_literal(void* expr);
-void* visit_var_expr(void* expr);
-void* visit_assign(void* expr);
-void* visit_logical(void* expr);
-void* visit_callable(void* exprObj);
+int obj_likely(Object* obj);
+Object* obj_new(LiteralType type, void* value, int valueSize);
+void obj_destroy(Object* obj);
 
-void* visit_print(void* stmt);
-void* visit_expr(void* stmt);
-void* visit_var(void* stmt);
-void* visit_block(void* stmt);
-void* visit_ifElse(void* stmt);
-void* visit_while(void* stmt);
-void* visit_fun(void* funObj);
-void* visit_return(void* returnObj);
+void* visit_binary(Expr* expr);
+void* visit_unary(Expr* expr);
+void* visit_grouping(Expr* expr);
+void* visit_literal(Expr* expr);
+void* visit_var_expr(Expr* expr);
+void* visit_assign(Expr* expr);
+void* visit_logical(Expr* expr);
+void* visit_callable(Expr* expr);
+
+void* visit_print(Stmt* stmt);
+void* visit_expr(Stmt* stmt);
+void* visit_var(Stmt* stmt);
+void* visit_block(Stmt* stmt);
+void* visit_ifElse(Stmt* stmt);
+void* visit_while(Stmt* stmt);
+void* visit_fun(Stmt* stmt);
+void* visit_return(Stmt* stmt);
 
 static Object* execute_block(BlockStmt* stmt);
 
@@ -130,19 +134,6 @@ static const char* likely(int condition)
     return FALSE_KEY;
 }
 
-static int obj_likely(Object* obj)
-{
-    if (obj->type == NIL_L) {
-        return 0;
-    }
-
-    if (obj->type == BOOL_L) {
-        return strcmp((char*)obj->value, TRUE_KEY) == 0;
-    }
-
-    return 1;
-}
-
 static Object* runtime_error(const char* format, Object** obj, int line, ...)
 {
     const char* runtimeError = "Runtime Error (at Line %d): ";
@@ -164,9 +155,9 @@ static Object* runtime_error(const char* format, Object** obj, int line, ...)
     return *obj;
 }
 
-void* visit_binary(void* expr)
+void* visit_binary(Expr* expr)
 {
-    const BinaryExpr* bexpr = (BinaryExpr*)expr;
+    const BinaryExpr* bexpr = (BinaryExpr*)(expr->expr);
     Object* rObject = eval(bexpr->rightExpr);
     Object* lObject = eval(bexpr->leftExpr);
     Object* result = NULL;
@@ -290,9 +281,9 @@ void* visit_binary(void* expr)
     return result;
 }
 
-void* visit_unary(void* expr)
+void* visit_unary(Expr* expr)
 {
-    const UnaryExpr* uexpr = (UnaryExpr*)expr;
+    const UnaryExpr* uexpr = (UnaryExpr*)(expr->expr);
     Object* rObject = eval(uexpr->expr);
     const char* st = NULL;
     double* value = NULL;
@@ -317,47 +308,47 @@ void* visit_unary(void* expr)
     return rObject;
 }
 
-void* visit_grouping(void* expr)
+void* visit_grouping(Expr* expr)
 {
-    const GroupingExpr* gexpr = (GroupingExpr*)expr;
+    const GroupingExpr* gexpr = (GroupingExpr*)(expr->expr);
     return eval(gexpr->expr);
 }
 
-void* visit_literal(void* expr)
+void* visit_literal(Expr* expr)
 {
-    LiteralExpr* original = (LiteralExpr*)expr;
+    LiteralExpr* original = (LiteralExpr*)(expr->expr);
     Object* result = (Object*)clone(original, sizeof(LiteralExpr));
     result->value = clone(original->value, original->valueSize);
     return result;
 }
 
-void* visit_var_expr(void* exprObject)
+void* visit_var_expr(Expr* expr)
 {
-    VariableExpr* expr = (VariableExpr*)exprObject;
-    Object* value = env_get_variable_value(CurrentEnv, expr->variableName.lexeme);
+    VariableExpr* varExpr = (VariableExpr*)(expr->expr);
+    Object* value = env_get_variable_value(CurrentEnv, varExpr->variableName.lexeme);
     if (value == NULL) {
-        runtime_error("Unresolved variable name '%s'", &value, expr->variableName.line, expr->variableName.lexeme);
+        runtime_error("Unresolved variable name '%s'", &value, varExpr->variableName.line, varExpr->variableName.lexeme);
     }
     return value;
 }
 
-void* visit_assign(void* exprObj)
+void* visit_assign(Expr* expr)
 {
-    AssignmentExpr* expr = (AssignmentExpr*)exprObj;
-    Object* value = eval(expr->rightExpr);
+    AssignmentExpr* assignExpr = (AssignmentExpr*)(expr->expr);
+    Object* value = eval(assignExpr->rightExpr);
 
     if (value == NULL) {
-        runtime_error("Cannot assign undeclared variable '%s'", &value, expr->variableName.line, expr->variableName.lexeme);
+        runtime_error("Cannot assign undeclared variable '%s'", &value, assignExpr->variableName.line, assignExpr->variableName.lexeme);
     } else {
-        env_set_variable_value(CurrentEnv, expr->variableName.lexeme, value);
+        env_set_variable_value(CurrentEnv, assignExpr->variableName.lexeme, value);
     }
 
     return value;
 }
 
-void* visit_logical(void* exprObj)
+void* visit_logical(Expr* expr)
 {
-    LogicalExpr* logical = (LogicalExpr*)exprObj;
+    LogicalExpr* logical = (LogicalExpr*)(expr->expr);
     Object* lvalue = eval(logical->left);
     int lvalueTruth = obj_likely(lvalue);
     if (logical->op.type == OR) {
@@ -372,17 +363,17 @@ void* visit_logical(void* exprObj)
     return eval(logical->right);
 }
 
-void* visit_callable(void* exprObj)
+void* visit_callable(Expr* expr)
 {
-    CallExpr* expr = (CallExpr*)exprObj;
-    Object* callee = eval(expr->callee);
+    CallExpr* calleeExpr = (CallExpr*)(expr->expr);
+    Object* callee = eval(calleeExpr->callee);
     Callable* callable = NULL;
     List* args = list();
     Node* node = NULL;
     Expr* arg = NULL;
     Object* result = NULL;
-    if (expr->args->count != 0) {
-        for (node = expr->args->head; node != NULL; node = node->next) {
+    if (calleeExpr->args->count != 0) {
+        for (node = calleeExpr->args->head; node != NULL; node = node->next) {
             arg = (Expr*)node->data;
             list_push(args, eval(arg));
         }
@@ -390,14 +381,14 @@ void* visit_callable(void* exprObj)
 
     if (callee->type != CALLABLE_L) {
         list_destroy(args);
-        return runtime_error("Can only call functions and classes.", &callee, expr->paren.line);
+        return runtime_error("Can only call functions and classes.", &callee, calleeExpr->paren.line);
     }
 
     callable = (Callable*)callee->value;
 
     if (args->count != callable->arity) {
         list_destroy(args);
-        return runtime_error("Expected %d but got %d arguments", &callee, expr->paren.line, args->count, callable->arity);
+        return runtime_error("Expected %d but got %d arguments", &callee, calleeExpr->paren.line, args->count, callable->arity);
     }
 
     result = callable->call(args, callable->declaration, callable->closure);
@@ -406,11 +397,13 @@ void* visit_callable(void* exprObj)
     return result;
 }
 
-void* visit_print(void* stmtObj)
+/// Statements Evaluation
+
+void* visit_print(Stmt* stmt)
 {
-    PrintStmt* stmt = (PrintStmt*)stmtObj;
+    PrintStmt* printStmt = (PrintStmt*)(stmt->realStmt);
     Callable* call = NULL;
-    Object* obj = eval(stmt->expr);
+    Object* obj = eval(printStmt->expr);
     double* value = NULL;
     switch (obj->type) {
     case STRING_L:
@@ -436,19 +429,19 @@ void* visit_print(void* stmtObj)
     return obj;
 }
 
-void* visit_expr(void* stmtObj)
+void* visit_expr(Stmt* stmt)
 {
-    ExprStmt* stmt = (ExprStmt*)stmtObj;
-    return eval(stmt->expr);
+    ExprStmt* exprStmt = (ExprStmt*)(stmt->realStmt);
+    return eval(exprStmt->expr);
 }
 
-void* visit_var(void* stmtObj)
+void* visit_var(Stmt* stmt)
 {
-    VarDeclarationStmt* stmt = (VarDeclarationStmt*)stmtObj;
+    VarDeclarationStmt* varDeclStmt = (VarDeclarationStmt*)(stmt->realStmt);
     Object* value = NULL;
-    Token key = stmt->varName;
-    if (stmt->initializer != NULL) {
-        value = eval(stmt->initializer);
+    Token key = varDeclStmt->varName;
+    if (varDeclStmt->initializer != NULL) {
+        value = eval(varDeclStmt->initializer);
     }
     if (!env_add_variable(CurrentEnv, key.lexeme, value)) {
         runtime_error("'%s' is already defined", &value, key.line, key.lexeme);
@@ -472,36 +465,36 @@ static Object* execute_block(BlockStmt* stmt)
     return new_void();
 }
 
-void* visit_block(void* blockObj)
+void* visit_block(Stmt* stmt)
 {
-    BlockStmt* stmt = (BlockStmt*)blockObj;
+    BlockStmt* blockStmt = (BlockStmt*)(stmt->realStmt);
     Stmt* innerStmt = NULL;
     Node* node = NULL;
     ExecutionEnvironment *prevEnv = CurrentEnv, env = { NULL, prevEnv };
     CurrentEnv = &env;
-    execute_block(stmt);
+    execute_block(blockStmt);
     env_destroy(CurrentEnv);
     CurrentEnv = prevEnv;
     return new_void();
 }
 
-void* visit_ifElse(void* ifElseObj)
+void* visit_ifElse(Stmt* stmt)
 {
-    IfElseStmt* stmt = (IfElseStmt*)ifElseObj;
-    Object* evalCond = eval(stmt->condition);
+    IfElseStmt* ifElseStmt = (IfElseStmt*)(stmt->realStmt);
+    Object* evalCond = eval(ifElseStmt->condition);
     if (obj_likely(evalCond)) {
-        return accept(EvaluateStmtVisitor, stmt->thenStmt);
-    } else if (stmt->elseStmt != NULL) {
-        return accept(EvaluateStmtVisitor, stmt->elseStmt);
+        return accept(EvaluateStmtVisitor, ifElseStmt->thenStmt);
+    } else if (ifElseStmt->elseStmt != NULL) {
+        return accept(EvaluateStmtVisitor, ifElseStmt->elseStmt);
     }
     return new_void();
 }
 
-void* visit_while(void* whileObj)
+void* visit_while(Stmt* stmt)
 {
-    WhileStmt* stmt = (WhileStmt*)whileObj;
-    while (obj_likely(eval(stmt->condition))) {
-        accept(EvaluateStmtVisitor, stmt->body);
+    WhileStmt* whileStmt = (WhileStmt*)(stmt->realStmt);
+    while (obj_likely(eval(whileStmt->condition))) {
+        accept(EvaluateStmtVisitor, whileStmt->body);
     }
 
     return new_void();
@@ -532,32 +525,34 @@ static Object* fun_call(List* args, void* declaration, ExecutionEnvironment clos
     return value;
 }
 
-void* visit_fun(void* funObj)
+void* visit_fun(Stmt* stmt)
 {
-    FunStmt* stmt = (FunStmt*)funObj;
+    FunStmt* funStmt = (FunStmt*)(stmt->realStmt);
     Object* obj = NULL;
     Callable* call = (Callable*)alloc(sizeof(Callable));
     memset(call, 0, sizeof(Callable));
     call->call = fun_call;
-    call->arity = stmt->args->count;
+    call->arity = funStmt->args->count;
     call->declaration = (void*)stmt;
     call->closure = *CurrentEnv;
     obj = obj_new(CALLABLE_L, call, sizeof(Callable));
-    env_add_variable(CurrentEnv, stmt->name.lexeme, obj);
+    env_add_variable(CurrentEnv, funStmt->name.lexeme, obj);
     return new_void();
 }
 
-void* visit_return(void* returnObj)
+void* visit_return(Stmt* stmt)
 {
     Object* value = new_void();
-    ReturnStmt* stmt = (ReturnStmt*)returnObj;
-    if (stmt->value != NULL) {
+    ReturnStmt* returnStmt = (ReturnStmt*)(stmt->realStmt);
+    if (returnStmt->value != NULL) {
         obj_destroy(value);
-        value = eval(stmt->value);
+        value = eval(returnStmt->value);
     }
 
     return value;
 }
+
+// Object
 
 void obj_destroy(Object* obj)
 {
@@ -593,4 +588,17 @@ Object* obj_new(LiteralType type, void* value, int valueSize)
     obj->value = value;
     obj->valueSize = valueSize;
     return obj;
+}
+
+int obj_likely(Object* obj)
+{
+    if (obj->type == NIL_L) {
+        return 0;
+    }
+
+    if (obj->type == BOOL_L) {
+        return strcmp((char*)obj->value, TRUE_KEY) == 0;
+    }
+
+    return 1;
 }

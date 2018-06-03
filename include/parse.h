@@ -70,17 +70,17 @@ typedef struct expression_call_t {
     List* args;
 } CallExpr;
 
-typedef void* (*Action)(void*);
+typedef void* (*ActionExpr)(Expr*);
 
 typedef struct expression_visitor_t {
-    Action visitBinary;
-    Action visitUnary;
-    Action visitLiteral;
-    Action visitGrouping;
-    Action visitVariable;
-    Action visitAssignment;
-    Action visitLogical;
-    Action visitCallable;
+    ActionExpr visitBinary;
+    ActionExpr visitUnary;
+    ActionExpr visitLiteral;
+    ActionExpr visitGrouping;
+    ActionExpr visitVariable;
+    ActionExpr visitAssignment;
+    ActionExpr visitLogical;
+    ActionExpr visitCallable;
 } ExpressionVisitor;
 
 typedef enum stmt_type_t {
@@ -94,21 +94,25 @@ typedef enum stmt_type_t {
     STMT_RETURN
 } StmtType;
 
-typedef struct stmt_visitor_t {
-    Action visitPrint;
-    Action visitVarDeclaration;
-    Action visitExpression;
-    Action visitBlock;
-    Action visitIfElse;
-    Action visitWhile;
-    Action visitFun;
-    Action visitReturn;
-} StmtVisitor;
-
 typedef struct stmt_t {
     StmtType type;
     void* realStmt;
 } Stmt;
+
+typedef void* (*ActionStmt)(Stmt* stmt);
+
+typedef struct stmt_visitor_t {
+    ActionStmt visitPrint;
+    ActionStmt visitVarDeclaration;
+    ActionStmt visitExpression;
+    ActionStmt visitBlock;
+    ActionStmt visitIfElse;
+    ActionStmt visitWhile;
+    ActionStmt visitFun;
+    ActionStmt visitReturn;
+} StmtVisitor;
+
+
 
 typedef struct stmt_print_t {
     Expr* expr;

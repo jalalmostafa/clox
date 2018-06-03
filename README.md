@@ -5,7 +5,7 @@
 
 clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) treewalk interpreter in ANSI C.
 
-Currently working on: [Functions](http://craftinginterpreters.com/functions.html#return-statements)
+Currently working on: [Resolving and Binding](http://craftinginterpreters.com/resolving-and-binding.html#a-resolver-class)
 
 ## Coding Conventions
 
