@@ -180,3 +180,20 @@ int list_any(List* list, Predicate predicate)
     }
     return 0;
 }
+
+void* list_pop(List* list)
+{
+    void* data = NULL;
+    Node* node = NULL;
+
+    if (list == NULL) {
+        return NULL;
+    }
+
+    node = list->last;
+    list->last = node->prev;
+    node->prev->next = NULL;
+    data = node->data;
+    fr(node);
+    return data;
+}

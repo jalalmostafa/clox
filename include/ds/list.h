@@ -28,5 +28,6 @@ Node* list_at(List* list, unsigned int index);
 void list_foreach(List* list, Iterator iter);
 void list_destroy(List* list);
 int list_any(List* list, Predicate pred);
+void* list_pop(List* list);
 
 #endif
