@@ -15,7 +15,6 @@ typedef enum tokentype {
     SLASH,
     STAR,
 
-    // One character probably followed by an Equal character.
     BANG,
     BANG_EQUAL,
     EQUAL,
@@ -25,12 +24,10 @@ typedef enum tokentype {
     LESS,
     LESS_EQUAL,
 
-    // Literals.
     IDENTIFIER,
     STRING,
     NUMBER,
 
-    // Keywords.
     AND,
     CLASS,
     ELSE,

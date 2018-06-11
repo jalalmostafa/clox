@@ -78,8 +78,8 @@ void* lldict_get(LLDictionary* dict, const char* key)
     Node* node = NULL;
     KeyValuePair* pair = NULL;
     int keyLength = 0;
-    if (dict == NULL) {
-        return 0;
+    if (dict == NULL || dict->elements->count == 0) {
+        return NULL;
     }
     keyLength = strlen(key) + 1;
     for (node = dict->elements->head; node != NULL; node = node->next) {

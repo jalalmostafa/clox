@@ -1,14 +1,24 @@
-#include "interp.h"
 #include "ds/list.h"
+#include "eval.h"
 #include "mem.h"
+#include "resolve.h"
 
 void for_stmts(void* stmtObj)
 {
     Stmt* stmt = (Stmt*)stmtObj;
-    accept(EvaluateStmtVisitor, stmt);
+    int resolved = resolve(stmt);
+    if (resolved) {
+        eval(stmt);
+    }
 }
 
-void interp(ParsingContext ctx)
+void interp(const char* code)
 {
-    list_foreach(ctx.stmts, for_stmts);
+    Tokenization* toknz = toknzr(code);
+    ParsingContext ctx = parse(toknz);
+    if (ctx.stmts != NULL) {
+        list_foreach(ctx.stmts, for_stmts);
+    }
+    parser_destroy(&ctx);
+    toknzr_destroy(toknz);
 }

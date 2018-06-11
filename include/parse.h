@@ -26,6 +26,7 @@ typedef enum literal_expr_type_t {
 typedef struct expression_t {
     ExpressionType type;
     void* expr;
+    unsigned int order;
 } Expr;
 
 typedef struct expression_binary_t {
@@ -70,19 +71,6 @@ typedef struct expression_call_t {
     List* args;
 } CallExpr;
 
-typedef void* (*ActionExpr)(Expr*);
-
-typedef struct expression_visitor_t {
-    ActionExpr visitBinary;
-    ActionExpr visitUnary;
-    ActionExpr visitLiteral;
-    ActionExpr visitGrouping;
-    ActionExpr visitVariable;
-    ActionExpr visitAssignment;
-    ActionExpr visitLogical;
-    ActionExpr visitCallable;
-} ExpressionVisitor;
-
 typedef enum stmt_type_t {
     STMT_PRINT,
     STMT_VAR_DECLARATION,
@@ -98,21 +86,6 @@ typedef struct stmt_t {
     StmtType type;
     void* realStmt;
 } Stmt;
-
-typedef void* (*ActionStmt)(Stmt* stmt);
-
-typedef struct stmt_visitor_t {
-    ActionStmt visitPrint;
-    ActionStmt visitVarDeclaration;
-    ActionStmt visitExpression;
-    ActionStmt visitBlock;
-    ActionStmt visitIfElse;
-    ActionStmt visitWhile;
-    ActionStmt visitFun;
-    ActionStmt visitReturn;
-} StmtVisitor;
-
-
 
 typedef struct stmt_print_t {
     Expr* expr;
@@ -158,8 +131,6 @@ typedef struct parser_t {
 } ParsingContext;
 
 ParsingContext parse(Tokenization* toknz);
-void* accept(StmtVisitor visitor, Stmt* stmt);
-void* accept_expr(ExpressionVisitor visitor, Expr* expr);
 void parser_destroy(ParsingContext* ctx);
 
 #define END_OF_TOKENS(x) ((x) == ENDOFFILE)

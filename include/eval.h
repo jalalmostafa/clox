@@ -25,15 +25,15 @@ int env_add_variable(ExecutionEnvironment* env, const char* variableName, Object
 int env_set_variable_value(ExecutionEnvironment* env, const char* variableName, Object* obj);
 Object* env_get_variable_value(ExecutionEnvironment* env, const char* variableName);
 void env_destroy(ExecutionEnvironment* env);
+int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, const char* variableName, Object* value);
+Object* env_get_variable_value_at(ExecutionEnvironment* env, unsigned int order, const char* variableName);
 
 void obj_destroy(Object* obj);
 Object* obj_new(LiteralType type, void* value, int valueSize);
 
-extern ExpressionVisitor EvaluateExpressionVisitor;
-
-extern StmtVisitor EvaluateStmtVisitor;
-
 extern ExecutionEnvironment GlobalExecutionEnvironment;
+
+void eval(Stmt* stmt);
 
 #define OPERAND_NUMBER "Syntax Error: Operands must be numbers at line: %d"
 #define OPERAND_SAMETYPE "Syntax Error: Operands must be two numbers or two strings at line: %d"

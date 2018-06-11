@@ -1,18 +1,3 @@
-print clock();
-
-fun add(a, b) {
-  print a + b;
-}
-
-add(1,2);
-
-fun sub(a, b) {
-  return a - b;
-  print "blabla";
-}
-
-print sub(2, 3);
-
 fun makeCounter() {
   var i = 0;
   fun count() {
@@ -25,4 +10,7 @@ fun makeCounter() {
 
 var counter = makeCounter();
 print counter;
+counter();
+counter();
+counter();
 counter();

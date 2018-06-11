@@ -4,6 +4,7 @@
 #include "global.h"
 #include "mem.h"
 #include "tokenizer.h"
+#include "visitor.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -40,24 +41,14 @@ static int match(TokenType type, TokenType types[], int n, Node** node)
     return 0;
 }
 
-static void error(Node* node, const char* msg)
-{
-    const Token* token = (Token*)node->data;
-    if (token->type == ENDOFFILE) {
-        except(ERROR_AT_EOF, msg);
-    } else {
-        except(ERROR_AT_LINE, token->line, msg, token->lexeme);
-    }
-}
-
 static Node** consume(Node** node, TokenType type, const char* msg)
 {
-    const Token* tkn = (Token*)(*node)->data;
+    Token* tkn = (Token*)(*node)->data;
     if (MATCH(tkn->type, type)) {
         (*node) = (*node)->next;
         return &(*node)->prev;
     }
-    error(*node, msg);
+    parse_error(tkn, msg);
     return NULL;
 }
 
@@ -66,6 +57,7 @@ static Expr* new_expr(ExpressionType type, void* realExpr)
     Expr* expr = (Expr*)alloc(sizeof(Expr));
     expr->expr = realExpr;
     expr->type = type;
+    expr->order = 0;
     return expr;
 }
 
@@ -151,7 +143,7 @@ static Expr* primary(Node** node)
 {
     Expr* groupedExpr = NULL;
     Node** n = NULL;
-    const Token* tkn = (Token*)(*node)->data;
+    Token* tkn = (Token*)(*node)->data;
     double* doubleLiteral = NULL;
 
     if (MATCH(tkn->type, TRUE)) {
@@ -195,7 +187,7 @@ static Expr* primary(Node** node)
         *node = (*node)->next;
         return new_expr(VARIABLE, new_variable(*(Token*)(*node)->prev->data));
     }
-    error(*node, UNKNOWN_IDENTIFIER);
+    parse_error(tkn, UNKNOWN_IDENTIFIER);
     return NULL;
 }
 
@@ -216,19 +208,23 @@ static Expr* finish_call(Node** node, Expr* callee)
     Node** temp = NULL;
     do {
         (*node) = (*node)->next;
+        tkn = (Token*)(*node)->data;
+
         if (args->count > MAX_ARGS) {
-            error(*node, "Cannot have more than %d args");
+            parse_error(tkn, "Cannot have more than %d args");
             list_destroy(args);
             expr_destroy(callee);
             return NULL;
         }
-        tkn = (Token*)(*node)->data;
+
         if (!MATCH(tkn->type, RIGHT_PAREN)) {
             arg = expression(node);
         }
+
         if (arg != NULL) {
             list_push(args, arg);
         }
+
         tkn = (Token*)(*node)->data;
     } while (MATCH(tkn->type, COMMA));
     temp = consume(node, RIGHT_PAREN, "Expect ')' for function call");
@@ -316,7 +312,7 @@ static Expr* assignment(Node** node)
         if (expr != NULL && expr->type == VARIABLE) {
             return new_expr(ASSIGNMENT, new_assignment(((VariableExpr*)expr->expr)->variableName, nextExpr));
         }
-        error(equals, "Invalid Assignment Target");
+        parse_error((Token*)equals->data, "Invalid Assignment Target");
     }
 
     return expr;
@@ -544,13 +540,14 @@ static Stmt* if_statement(Node** node)
 
 static Stmt* for_statement(Node** node)
 {
-    consume(node, LEFT_PAREN, "Expect '(' after for");
-    Token* tkn = (Token*)(*node)->data;
     Stmt *initializer = NULL, *body = NULL;
     Expr *condition = NULL, *step = NULL;
     BlockStmt *wrappedBody = NULL, *wrappedForAndInit = NULL;
     WhileStmt* wrappedFor = NULL;
     ExprStmt* wrappedStep = NULL;
+    Token* tkn = NULL;
+    consume(node, LEFT_PAREN, "Expect '(' after for");
+    tkn = (Token*)(*node)->data;
     if (MATCH(tkn->type, SEMICOLON)) {
         (*node) = (*node)->next;
     } else {
@@ -637,7 +634,7 @@ static Stmt* fun_statement(const char* kind, Node** node)
     if (!MATCH(tkn->type, RIGHT_PAREN)) {
         do {
             if (params->count > MAX_ARGS) {
-                error(*node, "Cannot have more than 8 parameters.");
+                parse_error(tkn, "Cannot have more than 8 parameters.");
             }
             temp = consume(node, IDENTIFIER, "Expect parameter name.");
             tkn = (Token*)(*temp)->data;
@@ -781,52 +778,6 @@ void parser_destroy(ParsingContext* ctx)
         stmts_destroy(ctx->stmts);
         ctx->stmts = NULL;
     }
-}
-
-void* accept_expr(ExpressionVisitor visitor, Expr* expr)
-{
-    switch (expr->type) {
-    case LITERAL:
-        return visitor.visitLiteral(expr);
-    case UNARY:
-        return visitor.visitUnary(expr);
-    case BINARY:
-        return visitor.visitBinary(expr);
-    case GROUPING:
-        return visitor.visitGrouping(expr);
-    case VARIABLE:
-        return visitor.visitVariable(expr);
-    case ASSIGNMENT:
-        return visitor.visitAssignment(expr);
-    case LOGICAL:
-        return visitor.visitLogical(expr);
-    case CALL:
-        return visitor.visitCallable(expr);
-    }
-    return NULL;
-}
-
-void* accept(StmtVisitor visitor, Stmt* stmt)
-{
-    switch (stmt->type) {
-    case STMT_PRINT:
-        return visitor.visitPrint(stmt);
-    case STMT_EXPR:
-        return visitor.visitExpression(stmt);
-    case STMT_VAR_DECLARATION:
-        return visitor.visitVarDeclaration(stmt);
-    case STMT_BLOCK:
-        return visitor.visitBlock(stmt);
-    case STMT_IF_ELSE:
-        return visitor.visitIfElse(stmt);
-    case STMT_WHILE:
-        return visitor.visitWhile(stmt);
-    case STMT_FUN:
-        return visitor.visitFun(stmt);
-    case STMT_RETURN:
-        return visitor.visitReturn(stmt);
-    }
-    return NULL;
 }
 
 ParsingContext parse(Tokenization* toknz)

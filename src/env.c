@@ -60,9 +60,6 @@ int env_set_variable_value(ExecutionEnvironment* env, const char* variableName, 
         if (lldict_contains(env->variables, variableName)) {
             return lldict_set(env->variables, variableName, obj);
         }
-        if (env->enclosing != NULL) {
-            return env_set_variable_value(env->enclosing, variableName, obj);
-        }
     }
     return 0;
 }
@@ -72,13 +69,41 @@ Object* env_get_variable_value(ExecutionEnvironment* env, const char* variableNa
     Object *obj = NULL, *clonedObj = NULL;
     if (env != NULL) {
         obj = (Object*)lldict_get(env->variables, variableName);
-        if (env->enclosing != NULL && obj == NULL) {
-            return env_get_variable_value(env->enclosing, variableName);
+        if (obj != NULL) {
+            clonedObj = (Object*)clone(obj, sizeof(Object));
+            clonedObj->value = clone(obj->value, obj->valueSize);
         }
     }
-    clonedObj = (Object*)clone(obj, sizeof(Object));
-    clonedObj->value = clone(obj->value, obj->valueSize);
     return clonedObj;
+}
+
+static ExecutionEnvironment* env_ancestor(ExecutionEnvironment* env, unsigned int order)
+{
+    unsigned int i = 0;
+    for (i = 0; i < order; i++) {
+        env = env->enclosing;
+    }
+    return env;
+}
+
+Object* env_get_variable_value_at(ExecutionEnvironment* env, unsigned int order, const char* variableName)
+{
+    if (env == NULL) {
+        return NULL;
+    }
+    env = env_ancestor(env, order);
+    return env_get_variable_value(env, variableName);
+}
+
+int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, const char* variableName, Object* value)
+{
+    if (env == NULL) {
+        return 0;
+    }
+
+    env = env_ancestor(env, order);
+    env_set_variable_value(env, variableName, value);
+    return 1;
 }
 
 void env_destroy(ExecutionEnvironment* env)

@@ -1,10 +1,9 @@
+#include "eval.h"
 #include "except.h"
 #include "global.h"
 #include "interp.h"
 #include "mem.h"
-#include "parse.h"
 #include "readline.h"
-#include "tokenizer.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +36,6 @@ int main(int argc, char* argv[])
                 fprintf(stderr, "%s\n", strerror(errno));
             } else {
                 run(buf);
-                env_destroy(&GlobalExecutionEnvironment);
             }
             getchar();
         } else {
@@ -47,6 +45,7 @@ int main(int argc, char* argv[])
                 fr(line);
             }
         }
+        env_destroy(&GlobalExecutionEnvironment);
     }
     return EXIT_SUCCESS;
 }
@@ -100,11 +99,5 @@ char* read_file(char* filepath)
 
 void run(const char* code)
 {
-    Tokenization* toknz = toknzr(code);
-    ParsingContext ctx = parse(toknz);
-    if (ctx.stmts != NULL) {
-        interp(ctx);
-    }
-    parser_destroy(&ctx);
-    toknzr_destroy(toknz);
+    interp(code);
 }

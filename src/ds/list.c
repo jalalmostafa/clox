@@ -44,6 +44,7 @@ Node* list_push(List* list, void* data)
 
 Node* list_insert(List* list, void* data, unsigned int index)
 {
+    Node *newNode = NULL, *n = NULL;
     if (list == NULL) {
         return NULL;
     }
@@ -52,7 +53,7 @@ Node* list_insert(List* list, void* data, unsigned int index)
         return list_push(list, data);
     }
 
-    Node* newNode = node(data);
+    newNode = node(data);
     list->count++;
     if (index == 0) {
         newNode->next = list->head;
@@ -61,7 +62,7 @@ Node* list_insert(List* list, void* data, unsigned int index)
         return newNode;
     }
 
-    Node* n = list_at(list, index);
+    n = list_at(list, index);
     if (n == NULL) {
         fr(newNode);
         return NULL;
@@ -84,8 +85,22 @@ int list_remove(List* list, Node* node)
     }
 
     list->count--;
-    n->prev->next = n->next;
-    n->next->prev = n->prev;
+    if (list->count == 0) {
+        list->head = NULL;
+        list->last = NULL;
+    } else {
+        if (n->prev != NULL) {
+            n->prev->next = n->next;
+        } else {
+            list->head = n->next;
+        }
+
+        if (n->next != NULL) {
+            n->next->prev = n->prev;
+        } else {
+            list->last = n->prev;
+        }
+    }
     fr(n);
     return 1;
 }
@@ -191,9 +206,9 @@ void* list_pop(List* list)
     }
 
     node = list->last;
-    list->last = node->prev;
-    node->prev->next = NULL;
-    data = node->data;
-    fr(node);
+    if (node != NULL) {
+        data = node->data;
+    }
+    list_remove(list, node);
     return data;
 }
