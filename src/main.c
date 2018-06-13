@@ -3,7 +3,6 @@
 #include "global.h"
 #include "interp.h"
 #include "mem.h"
-#include "readline.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +10,7 @@
 
 void usage(char* name);
 void header(char* name);
+char* read_line(const char* prompt);
 char* read_file(char* filepath);
 void run(const char* code);
 
@@ -21,9 +21,10 @@ int main(int argc, char* argv[])
 #else
     char separator = '/';
 #endif
-    char* name = strrchr(argv[0], separator) + 1;
+    char* name = strrchr(argv[0], separator);
     char* line = NULL;
     char* buf = NULL;
+    name = name != NULL ? name + 1 : name;
 
     if (argc > 2) {
         usage(name);
@@ -39,8 +40,8 @@ int main(int argc, char* argv[])
             }
             getchar();
         } else {
-            for (;;) {
-                line = read_line("> ");
+            printf("Type 'exit()' to exit\n");
+            for (line = read_line("> "); line != NULL && strcmp(line, "exit()\n") != 0; line = read_line("> ")) {
                 run(line);
                 fr(line);
             }
@@ -95,6 +96,17 @@ char* read_file(char* filepath)
     }
     fr(buf);
     return NULL;
+}
+
+char* read_line(const char* prompt)
+{
+    int size = sizeof(char) * LINEBUFSIZE;
+    char* line = (char*)alloc(size);
+    memset((void*)line, 0, size);
+    printf("%s", prompt);
+    fflush(stdin);
+    fgets(line, size, stdin);
+    return line;
 }
 
 void run(const char* code)
