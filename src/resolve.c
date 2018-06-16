@@ -5,6 +5,7 @@
 #include "mem.h"
 #include "visitor.h"
 #include <stdio.h>
+#include <string.h>
 
 static void scope_begin();
 static void scope_end();
@@ -12,8 +13,8 @@ static int resolve_list(List* Stmt);
 static int resolve_expr(Expr* expr);
 static int resolve_local(Expr* expr, Token name);
 static int resolve_fun(Stmt* stmt, FunctionType type);
-static void define(Token name);
-static void declare(Token name);
+static int define(Token name);
+static int declare(Token name);
 
 static void* visit_var_expr_resolver(Expr* expr);
 static void* visit_assign_expr_resolver(Expr* expr);
@@ -23,6 +24,9 @@ static void* visit_grouping_expr_resolver(Expr* expr);
 static void* visit_literal_expr_resolver(Expr* expr);
 static void* visit_logical_expr_resolver(Expr* expr);
 static void* visit_unary_expr_resolver(Expr* expr);
+static void* visit_get_expr_resolver(Expr* expr);
+static void* visit_set_expr_resolver(Expr* expr);
+static void* visit_this_expr_resolver(Expr* expr);
 
 ExpressionVisitor ExpressionResolver = {
     visit_binary_expr_resolver,
@@ -32,7 +36,10 @@ ExpressionVisitor ExpressionResolver = {
     visit_var_expr_resolver,
     visit_assign_expr_resolver,
     visit_logical_expr_resolver,
-    visit_call_expr_resolver
+    visit_call_expr_resolver,
+    visit_get_expr_resolver,
+    visit_set_expr_resolver,
+    visit_this_expr_resolver
 };
 
 static void* visit_block_stmt_resolver(Stmt* stmt);
@@ -43,6 +50,7 @@ static void* visit_if_stmt_resolver(Stmt* Stmt);
 static void* visit_print_stmt_resolver(Stmt* Stmt);
 static void* visit_return_stmt_resolver(Stmt* Stmt);
 static void* visit_while_stmt_resolver(Stmt* Stmt);
+static void* visit_class_stmt_resolver(Stmt* Stmt);
 
 StmtVisitor StatementResolver = {
     visit_print_stmt_resolver,
@@ -52,11 +60,13 @@ StmtVisitor StatementResolver = {
     visit_if_stmt_resolver,
     visit_while_stmt_resolver,
     visit_fun_stmt_resolver,
-    visit_return_stmt_resolver
+    visit_return_stmt_resolver,
+    visit_class_stmt_resolver
 };
 
 static List* scopes = NULL;
 static FunctionType current_function_type = FUNCTION_TYPE_NONE;
+static ClassType current_class_type = CLASS_TYPE_NONE;
 
 static void scope_begin()
 {
@@ -71,43 +81,43 @@ static void scope_end()
     lldict_destroy(dict);
 }
 
-static void declare(Token name)
+static int declare(Token name)
 {
     LLDictionary* scope = NULL;
     Node* node = NULL;
     int* value = NULL;
     if (scopes->count == 0) {
-        return;
+        return 1;
     }
+
     node = (Node*)scopes->last;
-    if (node != NULL) {
-        scope = (LLDictionary*)node->data;
-        if (lldict_contains(scope, name.lexeme)) {
-            parse_error(&name, "Variable with this name already declared in this scope.");
-            return;
-        }
+    scope = (LLDictionary*)node->data;
+    if (lldict_contains(scope, name.lexeme)) {
+        parse_error(&name, "Variable with this name already declared in this scope.");
+        return 0;
     }
 
     value = (int*)alloc(sizeof(int));
     *value = 0;
     lldict_add(scope, name.lexeme, (void*)value);
+    return 1;
 }
 
-static void define(Token name)
+static int define(Token name)
 {
     LLDictionary* scope = NULL;
     int* value = NULL;
     Node* node = NULL;
     if (scopes->count == 0) {
-        return;
+        return 1;
     }
+
     node = (Node*)scopes->last;
-    if (node != NULL) {
-        scope = (LLDictionary*)node->data;
-        value = (int*)lldict_get(scope, name.lexeme);
-        *value = 1;
-        lldict_set(scope, name.lexeme, value);
-    }
+    scope = (LLDictionary*)node->data;
+    value = (int*)lldict_get(scope, name.lexeme);
+    *value = 1;
+    lldict_set(scope, name.lexeme, value);
+    return 1;
 }
 
 static int resolve_list(List* stmts)
@@ -140,21 +150,22 @@ static int resolve_expr(Expr* expr)
 
 static int resolve_local(Expr* expr, Token name)
 {
-    int i = scopes->count - 1;
+    int i = scopes->count;
     LLDictionary* scope = NULL;
     Node* node = NULL;
-    for (node = scopes->last; node != NULL; node = node->next) {
-        scope = (LLDictionary*)node->next;
+    for (node = scopes->last; i >= 0 && node != NULL; node = node->prev) {
+        scope = (LLDictionary*)node->data;
         if (lldict_contains(scope, name.lexeme) != NULL) {
-            expr->order = scopes->count - 1 - i;
-            return resolve_expr(expr);
+            expr->order = scopes->count != 1 ? scopes->count - 1 - i : scopes->count - i;
+            return 1;
         }
         i--;
     }
+    expr->order = -1;
     return 1;
 }
 
-static void fun_args_iterator(void* argObj)
+static void fun_args_iterator(List* args, void* argObj)
 {
     Token* tkn = (Token*)argObj;
     declare(*tkn);
@@ -246,6 +257,28 @@ static void* visit_unary_expr_resolver(Expr* expr)
     return !resolve_expr(unary->expr) ? NULL : expr;
 }
 
+static void* visit_get_expr_resolver(Expr* expr)
+{
+    GetExpr* get = (GetExpr*)expr->expr;
+    return !resolve_expr(get->object) ? NULL : expr;
+}
+
+static void* visit_set_expr_resolver(Expr* expr)
+{
+    SetExpr* set = (SetExpr*)expr->expr;
+    return !resolve_expr(set->object) || !resolve_expr(set->value) ? NULL : expr;
+}
+
+static void* visit_this_expr_resolver(Expr* expr)
+{
+    ThisExpr* this = (ThisExpr*)expr->expr;
+    if (current_class_type == CLASS_TYPE_NONE) {
+        parse_error(&this->keyword, "Cannot use 'this' outside of a class.");
+        return NULL;
+    }
+    return !resolve_local(expr, this->keyword) ? NULL : expr;
+}
+
 static void* visit_block_stmt_resolver(Stmt* stmt)
 {
     int resolved = 0;
@@ -258,7 +291,7 @@ static void* visit_block_stmt_resolver(Stmt* stmt)
 
 static void* visit_var_stmt_resolver(Stmt* stmt)
 {
-    int resolved = 0;
+    int resolved = 1;
     VarDeclarationStmt* varDeclStmt = (VarDeclarationStmt*)(stmt->realStmt);
     declare(varDeclStmt->varName);
     if (varDeclStmt->initializer != NULL) {
@@ -306,11 +339,15 @@ static void* visit_print_stmt_resolver(Stmt* stmt)
 static void* visit_return_stmt_resolver(Stmt* stmt)
 {
     ReturnStmt* retrn = (ReturnStmt*)stmt->realStmt;
-    if (current_function_type != FUNCTION_TYPE_FUNCTION) {
+    if (current_function_type == FUNCTION_TYPE_CTOR) {
         parse_error(&retrn->keyword, "Cannot return from top-level code.");
         return NULL;
     }
     if (retrn->value != NULL) {
+        if (current_function_type == FUNCTION_TYPE_CTOR) {
+            parse_error(&retrn->keyword, "Cannot return a value from an initializer.");
+            return NULL;
+        }
         return !resolve_expr(retrn->value) ? NULL : stmt;
     }
     return stmt;
@@ -320,4 +357,35 @@ static void* visit_while_stmt_resolver(Stmt* stmt)
 {
     WhileStmt* whle = (WhileStmt*)stmt->realStmt;
     return !resolve_expr(whle->condition) || !resolve(whle->body) ? NULL : stmt;
+}
+
+static void class_foreach_method(List* methods, void* methodObj)
+{
+    Stmt* stmt = (Stmt*)methodObj;
+    FunStmt* fun = (FunStmt*)stmt->realStmt;
+    if (strcmp(fun->name.lexeme, "init") == 0) {
+        resolve_fun(stmt, FUNCTION_TYPE_CTOR);
+    } else {
+        resolve_fun(stmt, FUNCTION_TYPE_METHOD);
+    }
+}
+
+static void* visit_class_stmt_resolver(Stmt* stmt)
+{
+    LLDictionary* last = NULL;
+    int* value = NULL;
+    ClassStmt* class = (ClassStmt*)stmt->realStmt;
+    ClassType enclosedClassType = current_class_type;
+    current_class_type = CLASS_TYPE_CLASS;
+    declare(class->name);
+    define(class->name);
+    scope_begin();
+    last = (LLDictionary*)scopes->last->data;
+    value = (int*)alloc(sizeof(int));
+    *value = 1;
+    lldict_add(last, "this", value);
+    list_foreach(class->methods, class_foreach_method);
+    scope_end();
+    current_class_type = enclosedClassType;
+    return stmt;
 }

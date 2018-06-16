@@ -3,7 +3,7 @@
 #include "mem.h"
 #include "resolve.h"
 
-void for_stmts(void* stmtObj)
+void for_stmts(List* stmts, void* stmtObj)
 {
     Stmt* stmt = (Stmt*)stmtObj;
     int resolved = resolve(stmt);

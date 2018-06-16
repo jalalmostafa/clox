@@ -13,7 +13,7 @@ typedef struct list {
     unsigned int count;
 } List;
 
-typedef void (*Iterator)(void* data);
+typedef void (*Iterator)(List* list, void* data);
 
 typedef int (*Predicate)(Node* n);
 

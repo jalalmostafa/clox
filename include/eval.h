@@ -1,25 +1,55 @@
 #ifndef EVAL_H
 #define EVAL_H
 #include "ds/lldict.h"
-#include "parse.h"
+#include "resolve.h"
 
-typedef LiteralExpr Object;
+typedef enum obj_type_t {
+    OBJ_NIL,
+    OBJ_BOOL,
+    OBJ_NUMBER,
+    OBJ_STRING,
+    OBJ_ERROR,
+    OBJ_VOID,
+    OBJ_CALLABLE,
+    OBJ_CLASS_DEFINITION,
+    OBJ_CLASS_INSTANCE
+} ObjectType;
+
+typedef struct object_t {
+    void* value;
+    ObjectType type;
+    int valueSize;
+    int shallow;
+} Object;
 
 typedef struct env_t {
     LLDictionary* variables;
     struct env_t* enclosing;
 } ExecutionEnvironment;
 
-typedef Object* (*CallFunc)(List* args, void* declaration, ExecutionEnvironment env);
+typedef Object* (*CallFunc)(List* args, void* declaration, ExecutionEnvironment* env, FunctionType type);
 
 typedef struct callable_t {
     unsigned int arity;
     CallFunc call;
     void* declaration;
-    ExecutionEnvironment closure;
+    ExecutionEnvironment* closure;
+    FunctionType type;
 } Callable;
 
+typedef struct class_t {
+    char* name;
+    Callable* ctor;
+    LLDictionary* methods;
+} Class;
+
+typedef struct class_instance_t {
+    Class type;
+    LLDictionary* fields;
+} ClassInstance;
+
 void env_init(ExecutionEnvironment* env);
+ExecutionEnvironment* env_new();
 void env_init_global();
 int env_add_variable(ExecutionEnvironment* env, const char* variableName, Object* obj);
 int env_set_variable_value(ExecutionEnvironment* env, const char* variableName, Object* obj);
@@ -29,7 +59,9 @@ int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, con
 Object* env_get_variable_value_at(ExecutionEnvironment* env, unsigned int order, const char* variableName);
 
 void obj_destroy(Object* obj);
-Object* obj_new(LiteralType type, void* value, int valueSize);
+Object* obj_new(ObjectType type, void* value, int valueSize);
+int obj_likely(Object* obj);
+const char* obj_unlikely(Object* expr);
 
 extern ExecutionEnvironment GlobalExecutionEnvironment;
 

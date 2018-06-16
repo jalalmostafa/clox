@@ -11,10 +11,6 @@
 #include <stdio.h>
 #include <string.h>
 
-int obj_likely(Object* obj);
-Object* obj_new(LiteralType type, void* value, int valueSize);
-void obj_destroy(Object* obj);
-
 void* visit_binary(Expr* expr);
 void* visit_unary(Expr* expr);
 void* visit_grouping(Expr* expr);
@@ -23,6 +19,9 @@ void* visit_var_expr(Expr* expr);
 void* visit_assign(Expr* expr);
 void* visit_logical(Expr* expr);
 void* visit_callable(Expr* expr);
+void* visit_get(Expr* expr);
+void* visit_set(Expr* expr);
+void* visit_this(Expr* expr);
 
 void* visit_print(Stmt* stmt);
 void* visit_expr(Stmt* stmt);
@@ -32,8 +31,13 @@ void* visit_ifElse(Stmt* stmt);
 void* visit_while(Stmt* stmt);
 void* visit_fun(Stmt* stmt);
 void* visit_return(Stmt* stmt);
+void* visit_class(Stmt* stmt);
 
 static Object* execute_block(BlockStmt* stmt);
+static Object* instance_get(Object* instance, Token name);
+static void instance_set(ClassInstance* instance, Token name, Object* value);
+static Object* lookup_var(int order, char* name);
+static void callable_bind(Object* instanceObj, Callable* method);
 
 ExpressionVisitor EvaluateExpressionVisitor = {
     visit_binary,
@@ -43,10 +47,13 @@ ExpressionVisitor EvaluateExpressionVisitor = {
     visit_var_expr,
     visit_assign,
     visit_logical,
-    visit_callable
+    visit_callable,
+    visit_get,
+    visit_set,
+    visit_this
 };
 
-StmtVisitor eval_expruateStmtVisitor = {
+StmtVisitor EvaluateStmtVisitor = {
     visit_print,
     visit_var,
     visit_expr,
@@ -54,7 +61,8 @@ StmtVisitor eval_expruateStmtVisitor = {
     visit_ifElse,
     visit_while,
     visit_fun,
-    visit_return
+    visit_return,
+    visit_class
 };
 
 ExecutionEnvironment GlobalExecutionEnvironment = { NULL, NULL };
@@ -63,7 +71,7 @@ ExecutionEnvironment* CurrentEnv = &GlobalExecutionEnvironment;
 static Object* new_void()
 {
     Object* obj = (Object*)alloc(sizeof(Object));
-    obj->type = VOID_L;
+    obj->type = OBJ_VOID;
     obj->value = NULL;
     obj->valueSize = 0;
     return obj;
@@ -75,7 +83,7 @@ static Object* new_number(double value)
     Object* result = NULL;
     result = (Object*)alloc(sizeof(Object));
     memset(result, 0, sizeof(Object));
-    result->type = NUMBER_L;
+    result->type = OBJ_NUMBER;
     result->value = alloc(sizeof(double));
     result->valueSize = sizeof(double);
     holder = (double*)result->value;
@@ -90,7 +98,7 @@ static Object* new_bool(int truthy)
     int valueSize = strlen(truthyValue) + 1;
     result = (Object*)alloc(sizeof(Object));
     memset(result, 0, sizeof(Object));
-    result->type = BOOL_L;
+    result->type = OBJ_BOOL;
     result->value = clone((void*)truthyValue, valueSize);
     result->valueSize = valueSize;
     return result;
@@ -99,19 +107,6 @@ static Object* new_bool(int truthy)
 static Object* eval_expr(Expr* expr)
 {
     return (Object*)accept_expr(EvaluateExpressionVisitor, expr);
-}
-
-static const char* expr_unlikely(LiteralExpr* expr)
-{
-    if (expr->type == NIL_L) {
-        return TRUE_KEY;
-    }
-
-    if (expr->type == BOOL_L) {
-        return strcmp(TRUE_KEY, (const char*)expr->value) != 0 ? TRUE_KEY : FALSE_KEY;
-    }
-
-    return FALSE_KEY;
 }
 
 static Object* runtime_error(const char* format, Object** obj, int line, ...)
@@ -129,9 +124,10 @@ static Object* runtime_error(const char* format, Object** obj, int line, ...)
     if (*obj == NULL) {
         *obj = (Object*)alloc(sizeof(Object));
     }
-    (*obj)->type = ERROR_L;
+    (*obj)->type = OBJ_ERROR;
     (*obj)->value = clone(buffer, len);
     (*obj)->valueSize = 0;
+    (*obj)->shallow = 1;
     return *obj;
 }
 
@@ -151,19 +147,19 @@ void* visit_binary(Expr* expr)
 
     switch (bexpr->op.type) {
     case MINUS:
-        if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             result = new_number(*((double*)lObject->value) - *((double*)rObject->value));
         } else {
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
     case PLUS:
-        if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             result = new_number(*((double*)lObject->value) + *((double*)rObject->value));
-        } else if (rObject->type == STRING_L && lObject->type == STRING_L) {
+        } else if (rObject->type == OBJ_STRING && lObject->type == OBJ_STRING) {
             valueLengthLeft = strlen((char*)lObject->value);
             valueLengthRight = strlen((char*)rObject->value);
-            result->type = STRING_L;
+            result->type = OBJ_STRING;
             svalue = (char*)alloc(valueLengthLeft + valueLengthRight + 1);
             memcpy(svalue, lObject->value, valueLengthLeft);
             memcpy(svalue + valueLengthLeft, rObject->value, valueLengthRight + 1);
@@ -173,21 +169,21 @@ void* visit_binary(Expr* expr)
         }
         break;
     case SLASH:
-        if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             result = new_number(*((double*)lObject->value) / *((double*)rObject->value));
         } else {
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
     case STAR:
-        if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             result = new_number(*((double*)lObject->value) * *((double*)rObject->value));
         } else {
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
     case GREATER:
-        if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
             result = new_bool(*lvalue > *rvalue);
@@ -196,7 +192,7 @@ void* visit_binary(Expr* expr)
         }
         break;
     case GREATER_EQUAL:
-        if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
             result = new_bool(*lvalue >= *rvalue);
@@ -205,7 +201,7 @@ void* visit_binary(Expr* expr)
         }
         break;
     case LESS:
-        if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
             result = new_bool(*lvalue < *rvalue);
@@ -214,7 +210,7 @@ void* visit_binary(Expr* expr)
         }
         break;
     case LESS_EQUAL:
-        if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
             result = new_bool(*lvalue <= *rvalue);
@@ -223,28 +219,28 @@ void* visit_binary(Expr* expr)
         }
         break;
     case EQUAL_EQUAL:
-        if (rObject->type == NIL_L && lObject->type == NIL_L) {
+        if (rObject->type == OBJ_NIL && lObject->type == OBJ_NIL) {
             result->value = new_bool(1);
-        } else if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        } else if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
             result = new_bool(*lvalue == *rvalue);
-        } else if ((rObject->type == STRING_L && lObject->type == STRING_L)
-            || (rObject->type == BOOL_L && lObject->type == BOOL_L)) {
+        } else if ((rObject->type == OBJ_STRING && lObject->type == OBJ_STRING)
+            || (rObject->type == OBJ_BOOL && lObject->type == OBJ_BOOL)) {
             result = new_bool(strcmp((char*)rObject->value, (char*)lObject->value) == 0);
         } else {
             result = new_bool(0);
         }
         break;
     case BANG_EQUAL:
-        if (rObject->type == NIL_L && lObject->type == NIL_L) {
+        if (rObject->type == OBJ_NIL && lObject->type == OBJ_NIL) {
             result = new_bool(0);
-        } else if (rObject->type == NUMBER_L && lObject->type == NUMBER_L) {
+        } else if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
             result = new_bool(*lvalue != *rvalue);
-        } else if ((rObject->type == STRING_L && lObject->type == STRING_L)
-            || (rObject->type == BOOL_L && lObject->type == BOOL_L)) {
+        } else if ((rObject->type == OBJ_STRING && lObject->type == OBJ_STRING)
+            || (rObject->type == OBJ_BOOL && lObject->type == OBJ_BOOL)) {
             result = new_bool(strcmp((char*)rObject->value, (char*)lObject->value) != 0);
         } else {
             result = new_bool(1);
@@ -267,15 +263,13 @@ void* visit_unary(Expr* expr)
     Object* rObject = eval_expr(uexpr->expr);
     const char* st = NULL;
     double* value = NULL;
-    switch (uexpr->op.type) {
-    case BANG:
-        st = expr_unlikely(rObject);
+    if (uexpr->op.type == BANG) {
+        st = obj_unlikely(rObject);
         fr(rObject->value);
-        rObject->type = BOOL_L;
+        rObject->type = OBJ_BOOL;
         rObject->value = clone((void*)st, strlen(st) + 1);
-        break;
-    case MINUS:
-        if (rObject->type != NUMBER_L) {
+    } else if (uexpr->op.type == MINUS) {
+        if (rObject->type != OBJ_NUMBER) {
             runtime_error(OPERAND_NUMBER, &rObject, uexpr->op.line);
         } else {
             value = (double*)clone(rObject->value, sizeof(double));
@@ -283,7 +277,6 @@ void* visit_unary(Expr* expr)
             fr(rObject->value);
             rObject->value = value;
         }
-        break;
     }
     return rObject;
 }
@@ -302,15 +295,21 @@ void* visit_literal(Expr* expr)
     return result;
 }
 
+static Object* lookup_var(int order, char* name)
+{
+    Object* value = NULL;
+    if (order == -1) {
+        value = env_get_variable_value(&GlobalExecutionEnvironment, name);
+    } else {
+        value = env_get_variable_value_at(CurrentEnv, order, name);
+    }
+    return value;
+}
+
 void* visit_var_expr(Expr* expr)
 {
     VariableExpr* varExpr = (VariableExpr*)(expr->expr);
-    Object* value = NULL;
-    if (expr->order == 0) {
-        value = env_get_variable_value(&GlobalExecutionEnvironment, varExpr->variableName.lexeme);
-    } else {
-        value = env_get_variable_value_at(CurrentEnv, expr->order, varExpr->variableName.lexeme);
-    }
+    Object* value = lookup_var(expr->order, varExpr->variableName.lexeme);
     if (value == NULL) {
         runtime_error("Unresolved variable name '%s'", &value, varExpr->variableName.line, varExpr->variableName.lexeme);
     }
@@ -367,38 +366,69 @@ void* visit_callable(Expr* expr)
         }
     }
 
-    if (callee->type != CALLABLE_L) {
+    if (callee->type != OBJ_CALLABLE && callee->type != OBJ_CLASS_DEFINITION) {
         list_destroy(args);
         return runtime_error("Can only call functions and classes.", &callee, calleeExpr->paren.line);
     }
 
-    callable = (Callable*)callee->value;
+    callable = callee->type == OBJ_CALLABLE ? (Callable*)callee->value : ((Class*)callee->value)->ctor;
 
     if (args->count != callable->arity) {
         list_destroy(args);
         return runtime_error("Expected %d but got %d arguments", &callee, calleeExpr->paren.line, args->count, callable->arity);
     }
+    result = callable->call(args, callable->declaration, callable->closure, callable->type);
 
-    result = callable->call(args, callable->declaration, callable->closure);
     obj_destroy(callee);
     list_destroy(args);
     return result;
+}
+
+void* visit_get(Expr* expr)
+{
+    GetExpr* get = (GetExpr*)expr->expr;
+    Object* obj = eval_expr(get->object);
+    if (obj->type == OBJ_CLASS_INSTANCE) {
+        return instance_get(obj, get->name);
+    }
+
+    return runtime_error("Only instances have properties", &obj, get->name.line);
+}
+
+void* visit_set(Expr* expr)
+{
+    SetExpr* set = (SetExpr*)expr->expr;
+    Object *object = eval_expr(set->object), *value = NULL;
+    if (object->type != OBJ_CLASS_INSTANCE) {
+        return runtime_error("Only instances have fields.", &object, set->name.line);
+    }
+    value = eval_expr(set->value);
+    instance_set(object->value, set->name, value);
+    return value;
+}
+
+void* visit_this(Expr* expr)
+{
+    ThisExpr* this = (ThisExpr*)expr->expr;
+    return lookup_var(expr->order, this->keyword.lexeme);
 }
 
 void* visit_print(Stmt* stmt)
 {
     PrintStmt* printStmt = (PrintStmt*)(stmt->realStmt);
     Callable* call = NULL;
+    Class* class = NULL;
+    ClassInstance* instance = NULL;
     Object* obj = eval_expr(printStmt->expr);
     double* value = NULL;
     switch (obj->type) {
-    case STRING_L:
-    case BOOL_L:
-    case NIL_L:
-    case ERROR_L:
+    case OBJ_STRING:
+    case OBJ_BOOL:
+    case OBJ_NIL:
+    case OBJ_ERROR:
         printf("%s\n", (char*)obj->value);
         break;
-    case NUMBER_L:
+    case OBJ_NUMBER:
         value = (double*)obj->value;
         if (*value != floor(*value)) {
             printf("%lf\n", *value);
@@ -406,10 +436,18 @@ void* visit_print(Stmt* stmt)
             printf("%0.0lf\n", floor(*value));
         }
         break;
-    case CALLABLE_L:
+    case OBJ_CALLABLE:
         call = (Callable*)obj->value;
         printf("<fn %s>\n", ((FunStmt*)call->declaration)->name.lexeme);
-    case VOID_L:
+    case OBJ_CLASS_DEFINITION:
+        class = (Class*)obj->value;
+        printf("<class %s>\n", class->name);
+        break;
+    case OBJ_CLASS_INSTANCE:
+        instance = (ClassInstance*)obj->value;
+        printf("<instance %s>\n", instance->type.name);
+        break;
+    case OBJ_VOID:
         break;
     }
     return obj;
@@ -443,9 +481,9 @@ static Object* execute_block(BlockStmt* stmt)
     for (node = stmt->innerStmts->head; node != NULL; node = node->next) {
         innerStmt = (Stmt*)node->data;
         if (innerStmt->type == STMT_RETURN) {
-            return accept(eval_expruateStmtVisitor, innerStmt);
+            return accept(EvaluateStmtVisitor, innerStmt);
         } else {
-            accept(eval_expruateStmtVisitor, innerStmt);
+            accept(EvaluateStmtVisitor, innerStmt);
         }
     }
     return new_void();
@@ -454,13 +492,15 @@ static Object* execute_block(BlockStmt* stmt)
 void* visit_block(Stmt* stmt)
 {
     BlockStmt* blockStmt = (BlockStmt*)(stmt->realStmt);
-    ExecutionEnvironment *prevEnv = CurrentEnv, env;
-    env.variables = NULL;
-    env.enclosing = prevEnv;
-    CurrentEnv = &env;
+    ExecutionEnvironment *prevEnv = CurrentEnv, *env = env_new();
+    env->variables = NULL;
+    env->enclosing = prevEnv;
+    CurrentEnv = env;
     execute_block(blockStmt);
     env_destroy(CurrentEnv);
     CurrentEnv = prevEnv;
+    env_destroy(env);
+    fr(env);
     return new_void();
 }
 
@@ -469,9 +509,9 @@ void* visit_ifElse(Stmt* stmt)
     IfElseStmt* ifElseStmt = (IfElseStmt*)(stmt->realStmt);
     Object* eval_exprCond = eval_expr(ifElseStmt->condition);
     if (obj_likely(eval_exprCond)) {
-        return accept(eval_expruateStmtVisitor, ifElseStmt->thenStmt);
+        return accept(EvaluateStmtVisitor, ifElseStmt->thenStmt);
     } else if (ifElseStmt->elseStmt != NULL) {
-        return accept(eval_expruateStmtVisitor, ifElseStmt->elseStmt);
+        return accept(EvaluateStmtVisitor, ifElseStmt->elseStmt);
     }
     return new_void();
 }
@@ -480,22 +520,22 @@ void* visit_while(Stmt* stmt)
 {
     WhileStmt* whileStmt = (WhileStmt*)(stmt->realStmt);
     while (obj_likely(eval_expr(whileStmt->condition))) {
-        accept(eval_expruateStmtVisitor, whileStmt->body);
+        accept(EvaluateStmtVisitor, whileStmt->body);
     }
 
     return new_void();
 }
 
-static Object* fun_call(List* args, void* declaration, ExecutionEnvironment closure)
+static Object* fun_call(List* args, void* declaration, ExecutionEnvironment* closure, FunctionType type)
 {
     FunStmt* funDecl = (FunStmt*)declaration;
     Token* tkn = NULL;
     Node *node = NULL, *valueWrapper = NULL;
     int i = 0;
     Object* value = NULL;
-    ExecutionEnvironment *prevEnv = CurrentEnv, env = closure;
-    env.enclosing = prevEnv;
-    CurrentEnv = &env;
+    ExecutionEnvironment *prevEnv = CurrentEnv, *env = closure;
+    env->enclosing = prevEnv;
+    CurrentEnv = env;
 
     for (node = funDecl->args->head; node != NULL; node = node->next) {
         tkn = (Token*)node->data;
@@ -506,22 +546,41 @@ static Object* fun_call(List* args, void* declaration, ExecutionEnvironment clos
         }
         i++;
     }
+
     value = execute_block((BlockStmt*)funDecl->body->realStmt);
+    if (value->type == OBJ_VOID) {
+        if (type == FUNCTION_TYPE_CTOR) {
+            obj_destroy(value);
+            value = env_get_variable_value(CurrentEnv, "this");
+        }
+    }
+
+    if (type == FUNCTION_TYPE_CTOR) {
+        obj_destroy(value);
+        value = env_get_variable_value(CurrentEnv, "this");
+    }
+
     CurrentEnv = prevEnv;
     return value;
+}
+
+static Object* build_function(FunStmt* funStmt, ExecutionEnvironment* closure, FunctionType type)
+{
+    Callable* call = (Callable*)alloc(sizeof(Callable));
+    memset(call, 0, sizeof(Callable));
+    call->call = fun_call;
+    call->arity = funStmt->args->count;
+    call->declaration = (void*)funStmt;
+    call->closure = closure;
+    call->type = type;
+    return obj_new(OBJ_CALLABLE, call, sizeof(Callable));
 }
 
 void* visit_fun(Stmt* stmt)
 {
     FunStmt* funStmt = (FunStmt*)(stmt->realStmt);
     Object* obj = NULL;
-    Callable* call = (Callable*)alloc(sizeof(Callable));
-    memset(call, 0, sizeof(Callable));
-    call->call = fun_call;
-    call->arity = funStmt->args->count;
-    call->declaration = (void*)funStmt;
-    call->closure = *CurrentEnv;
-    obj = obj_new(CALLABLE_L, call, sizeof(Callable));
+    obj = build_function(funStmt, CurrentEnv, FUNCTION_TYPE_FUNCTION);
     env_add_variable(CurrentEnv, funStmt->name.lexeme, obj);
     return new_void();
 }
@@ -538,58 +597,181 @@ void* visit_return(Stmt* stmt)
     return value;
 }
 
+static Object* instantiate(List* args, void* declaration, ExecutionEnvironment* env, FunctionType funType)
+{
+    Class* type = (Class*)declaration;
+    ClassInstance* instance = (ClassInstance*)alloc(sizeof(ClassInstance));
+    Object* instanceObj = obj_new(OBJ_CLASS_INSTANCE, instance, sizeof(ClassInstance));
+    Object* customCtorMethod = lldict_get(type->methods, "init");
+    Callable* customCtor = NULL;
+
+    if (customCtor != NULL) {
+        customCtor = (Callable*)customCtorMethod->value;
+        callable_bind(instanceObj, customCtor);
+        customCtor->call(args, declaration, env, customCtor->type);
+    }
+
+    instance->type = *type;
+    instance->fields = lldict();
+    return instanceObj;
+}
+
+void* visit_class(Stmt* stmt)
+{
+    Node* n = NULL;
+    FunStmt* funStmt = NULL;
+    ClassStmt* classStmt = (ClassStmt*)stmt->realStmt;
+    Class* class = (Class*)alloc(sizeof(Class));
+    Callable *ctor = (Callable*)alloc(sizeof(Callable)), *customCtor = NULL;
+    Object* callable = NULL;
+
+    ctor->arity = 0;
+    ctor->type = FUNCTION_TYPE_CTOR;
+    ctor->closure = CurrentEnv;
+    ctor->declaration = class;
+    ctor->call = instantiate;
+    class->name = clone(classStmt->name.lexeme, strlen(classStmt->name.lexeme) + 1);
+    class->ctor = ctor;
+    class->methods = lldict();
+
+    for (n = classStmt->methods->head; n != NULL; n = n->next) {
+        funStmt = (FunStmt*)((Stmt*)n->data)->realStmt;
+        callable = build_function(funStmt, CurrentEnv, FUNCTION_TYPE_METHOD);
+        lldict_add(class->methods, funStmt->name.lexeme, callable);
+    }
+
+    customCtor = lldict_get(class->methods, "init");
+    if (customCtor != NULL) {
+        ctor->arity = customCtor->arity;
+        customCtor->type = FUNCTION_TYPE_CTOR;
+    }
+
+    env_add_variable(CurrentEnv, class->name, obj_new(OBJ_CLASS_DEFINITION, class, sizeof(Class)));
+    return new_void();
+}
+
+static void callable_destroy(Callable* callable)
+{
+    if (GlobalExecutionEnvironment.variables != callable->closure->variables) {
+        env_destroy(callable->closure);
+        fr(callable->closure);
+    }
+}
+
 void obj_destroy(Object* obj)
 {
     Callable* callable = NULL;
-    if (obj != NULL) {
+    Class* class = NULL;
+    ClassInstance* instance = NULL;
+
+    if (obj != NULL && obj->shallow == 1) {
         switch (obj->type) {
-        case NIL_L:
-        case BOOL_L:
-        case NUMBER_L:
-        case STRING_L:
-        case ERROR_L:
-        case VOID_L:
+        case OBJ_NIL:
+        case OBJ_BOOL:
+        case OBJ_NUMBER:
+        case OBJ_STRING:
+        case OBJ_ERROR:
+        case OBJ_VOID:
             fr(obj->value);
-            fr(obj);
             break;
-        case CALLABLE_L:
+        case OBJ_CALLABLE:
             callable = (Callable*)obj->value;
-            if (GlobalExecutionEnvironment.variables != callable->closure.variables) {
-                env_destroy(&callable->closure);
-            }
+            callable_destroy(callable);
             fr(obj->value);
-            fr(obj);
+            break;
+        case OBJ_CLASS_DEFINITION:
+            class = (Class*)obj->value;
+            callable_destroy(class->ctor);
+            fr(class->ctor);
+            fr(class->name);
+            fr(obj->value);
+            break;
+        case OBJ_CLASS_INSTANCE:
+            instance = (ClassInstance*)obj->value;
+            lldict_destroy(instance->fields);
+            fr(instance);
             break;
         default:
             runtime_error("Unknown Object to destroy", &obj, 0);
             break;
         }
+        fr(obj);
     }
 }
 
-Object* obj_new(LiteralType type, void* value, int valueSize)
+Object* obj_new(ObjectType type, void* value, int valueSize)
 {
     Object* obj = alloc(sizeof(Object));
     obj->type = type;
     obj->value = value;
     obj->valueSize = valueSize;
+    obj->shallow = 1;
     return obj;
 }
 
 int obj_likely(Object* obj)
 {
-    if (obj->type == NIL_L) {
+    if (obj->type == OBJ_NIL) {
         return 0;
     }
 
-    if (obj->type == BOOL_L) {
+    if (obj->type == OBJ_BOOL) {
         return strcmp((char*)obj->value, TRUE_KEY) == 0;
     }
 
     return 1;
 }
 
+const char* obj_unlikely(Object* expr)
+{
+    if (expr->type == OBJ_NIL) {
+        return TRUE_KEY;
+    }
+
+    if (expr->type == OBJ_BOOL) {
+        return strcmp(TRUE_KEY, (const char*)expr->value) != 0 ? TRUE_KEY : FALSE_KEY;
+    }
+
+    return FALSE_KEY;
+}
+
 void eval(Stmt* stmt)
 {
-    accept(eval_expruateStmtVisitor, stmt);
+    accept(EvaluateStmtVisitor, stmt);
+}
+
+static void callable_bind(Object* instanceObj, Callable* method)
+{
+    ExecutionEnvironment* classEnv = env_new();
+    env_add_variable(classEnv, "this", instanceObj);
+    classEnv->enclosing = method->closure;
+    method->closure = classEnv;
+}
+
+static Object* instance_get(Object* instanceObj, Token name)
+{
+    Object* member = NULL;
+    ClassInstance* instance = (ClassInstance*)instanceObj->value;
+    Callable* method = NULL;
+    if (lldict_contains(instance->fields, name.lexeme)) {
+        return lldict_get(instance->fields, name.lexeme);
+    }
+
+    if (lldict_contains(instance->type.methods, name.lexeme)) {
+        member = lldict_get(instance->type.methods, name.lexeme);
+        method = (Callable*)member->value;
+        callable_bind(instanceObj, method);
+        return member;
+    }
+
+    return runtime_error("Undefined property '%s'", NULL, name.line, name.lexeme);
+}
+
+static void instance_set(ClassInstance* instance, Token name, Object* value)
+{
+    if (lldict_contains(instance->fields, name.lexeme)) {
+        lldict_set(instance->fields, name.lexeme, value);
+    } else {
+        lldict_add(instance->fields, name.lexeme, value);
+    }
 }

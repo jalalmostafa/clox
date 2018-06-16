@@ -3,7 +3,7 @@
 #include "mem.h"
 #include <string.h>
 
-static void keyvaluepair_delete(void* keyValuePairObj);
+static void keyvaluepair_delete(List* list, void* keyValuePairObj);
 
 LLDictionary* lldict()
 {
@@ -40,7 +40,7 @@ int lldict_remove(LLDictionary* dict, const char* key)
         pair = (KeyValuePair*)node->data;
         if (memcmp(pair->key, key, keyLength) == 0) {
             removed = node;
-            keyvaluepair_delete(pair);
+            keyvaluepair_delete(NULL, pair);
             break;
         }
     }
@@ -104,7 +104,7 @@ int lldict_set(LLDictionary* dict, const char* key, void* value)
     return 0;
 }
 
-static void keyvaluepair_delete(void* keyValuePairObj)
+static void keyvaluepair_delete(List* list, void* keyValuePairObj)
 {
     KeyValuePair* keyValuePair = (KeyValuePair*)keyValuePairObj;
     if (keyValuePair != NULL) {

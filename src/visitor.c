@@ -1,25 +1,31 @@
 #include "visitor.h"
-#include<stdio.h>
+#include <stdio.h>
 
 void* accept_expr(ExpressionVisitor visitor, Expr* expr)
 {
     switch (expr->type) {
-    case LITERAL:
+    case EXPR_LITERAL:
         return visitor.visitLiteral(expr);
-    case UNARY:
+    case EXPR_UNARY:
         return visitor.visitUnary(expr);
-    case BINARY:
+    case EXPR_BINARY:
         return visitor.visitBinary(expr);
-    case GROUPING:
+    case EXPR_GROUPING:
         return visitor.visitGrouping(expr);
-    case VARIABLE:
+    case EXPR_VARIABLE:
         return visitor.visitVariable(expr);
-    case ASSIGNMENT:
+    case EXPR_ASSIGNMENT:
         return visitor.visitAssignment(expr);
-    case LOGICAL:
+    case EXPR_LOGICAL:
         return visitor.visitLogical(expr);
-    case CALL:
+    case EXPR_CALL:
         return visitor.visitCallable(expr);
+    case EXPR_GET:
+        return visitor.visitGet(expr);
+    case EXPR_SET:
+        return visitor.visitSet(expr);
+    case EXPR_THIS:
+        return visitor.visitThis(expr);
     }
     return NULL;
 }
@@ -43,6 +49,8 @@ void* accept(StmtVisitor visitor, Stmt* stmt)
         return visitor.visitFun(stmt);
     case STMT_RETURN:
         return visitor.visitReturn(stmt);
+    case STMT_CLASS:
+        return visitor.visitClass(stmt);
     }
     return NULL;
 }

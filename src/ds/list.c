@@ -177,7 +177,7 @@ void list_foreach(List* list, Iterator iter)
         return;
     }
     for (n = list->head; n != NULL; n = n->next) {
-        iter(n->data);
+        iter(list, n->data);
     }
 }
 

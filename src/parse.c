@@ -26,8 +26,10 @@ static Stmt* for_statement(Node** node);
 static Stmt* while_statement(Node** node);
 static Stmt* fun_statement(const char* type, Node** node);
 static Stmt* return_statement(Node** node);
+static Stmt* class_statement(Node** node);
 
 static void expr_destroy(Expr* expr);
+static void stmt_destroy(Stmt* stmt);
 
 static int match(TokenType type, TokenType types[], int n, Node** node)
 {
@@ -116,7 +118,7 @@ static Expr* binary_production(Node** node, Expr* (*rule)(Node** t), TokenType m
     while (match(((Token*)(*node)->data)->type, matchTokens, n, node)) {
         tknPrev = (Token*)(*node)->prev->data;
         exprRight = rule(node);
-        expr = new_expr(BINARY, new_binary(*tknPrev, expr, exprRight));
+        expr = new_expr(EXPR_BINARY, new_binary(*tknPrev, expr, exprRight));
     }
     return expr;
 }
@@ -145,32 +147,33 @@ static Expr* primary(Node** node)
     Node** n = NULL;
     Token* tkn = (Token*)(*node)->data;
     double* doubleLiteral = NULL;
+    ThisExpr* this = NULL;
 
     if (MATCH(tkn->type, TRUE)) {
         (*node) = (*node)->next;
-        return new_expr(LITERAL, (void*)new_true());
+        return new_expr(EXPR_LITERAL, (void*)new_true());
     }
 
     if (MATCH(tkn->type, FALSE)) {
         (*node) = (*node)->next;
-        return new_expr(LITERAL, (void*)new_false());
+        return new_expr(EXPR_LITERAL, (void*)new_false());
     }
 
     if (MATCH(tkn->type, NIL)) {
         (*node) = (*node)->next;
-        return new_expr(LITERAL, (void*)new_nil());
+        return new_expr(EXPR_LITERAL, (void*)new_nil());
     }
 
     if (MATCH(tkn->type, STRING)) {
         (*node) = (*node)->next;
-        return new_expr(LITERAL, new_literal(clone(tkn->literal, strlen(tkn->literal) + 1), STRING_L, strlen(tkn->literal) + 1));
+        return new_expr(EXPR_LITERAL, new_literal(clone(tkn->literal, strlen(tkn->literal) + 1), STRING_L, strlen(tkn->literal) + 1));
     }
 
     if (MATCH(tkn->type, NUMBER)) {
         (*node) = (*node)->next;
         doubleLiteral = (double*)alloc(sizeof(double));
         *doubleLiteral = atof(tkn->literal);
-        return new_expr(LITERAL, new_literal(doubleLiteral, NUMBER_L, sizeof(double)));
+        return new_expr(EXPR_LITERAL, new_literal(doubleLiteral, NUMBER_L, sizeof(double)));
     }
 
     if (MATCH(tkn->type, LEFT_PAREN)) {
@@ -180,12 +183,18 @@ static Expr* primary(Node** node)
         if (n == NULL) {
             return NULL;
         }
-        return new_expr(GROUPING, (void*)new_grouping(groupedExpr));
+        return new_expr(EXPR_GROUPING, (void*)new_grouping(groupedExpr));
+    }
+
+    if (MATCH(tkn->type, THIS)) {
+        this = (ThisExpr*)alloc(sizeof(ThisExpr));
+        this->keyword = *(Token*)(*node)->prev->data;
+        return new_expr(EXPR_THIS, this);
     }
 
     if (MATCH(tkn->type, IDENTIFIER)) {
         *node = (*node)->next;
-        return new_expr(VARIABLE, new_variable(*(Token*)(*node)->prev->data));
+        return new_expr(EXPR_VARIABLE, new_variable(*(Token*)(*node)->prev->data));
     }
     parse_error(tkn, UNKNOWN_IDENTIFIER);
     return NULL;
@@ -193,11 +202,11 @@ static Expr* primary(Node** node)
 
 static CallExpr* new_call(Expr* callee, List* args, Token paren)
 {
-    CallExpr* call = alloc(sizeof(CallExpr));
-    call->callee = callee;
-    call->paren = paren;
-    call->args = args;
-    return call;
+    CallExpr* EXPR_CALL = alloc(sizeof(CallExpr));
+    EXPR_CALL->callee = callee;
+    EXPR_CALL->paren = paren;
+    EXPR_CALL->args = args;
+    return EXPR_CALL;
 }
 
 static Expr* finish_call(Node** node, Expr* callee)
@@ -227,22 +236,35 @@ static Expr* finish_call(Node** node, Expr* callee)
 
         tkn = (Token*)(*node)->data;
     } while (MATCH(tkn->type, COMMA));
-    temp = consume(node, RIGHT_PAREN, "Expect ')' for function call");
+    temp = consume(node, RIGHT_PAREN, "Expect ')' for function EXPR_CALL");
     paren = (Token*)(*temp)->data;
-    return new_expr(CALL, new_call(callee, args, *paren));
+    return new_expr(EXPR_CALL, new_call(callee, args, *paren));
 }
 
 static Expr* call(Node** node)
 {
     Expr* expr = primary(node);
-    Token* tkn = (Token*)(*node)->data;
+    Token *tkn = (Token*)(*node)->data, name;
+    GetExpr* get = NULL;
+    Node** temp = NULL;
+
     while (1) {
         if (MATCH(tkn->type, LEFT_PAREN)) {
             expr = finish_call(node, expr);
-            tkn = (Token*)(*node)->data;
+        } else if (MATCH(tkn->type, DOT)) {
+            (*node) = (*node)->next;
+            temp = consume(node, IDENTIFIER, "Expect property name after '.'.");
+            if (temp != NULL) {
+                name = *(Token*)((*temp)->data);
+                get = (GetExpr*)alloc(sizeof(GetExpr));
+                get->name = name;
+                get->object = expr;
+                expr = new_expr(EXPR_GET, get);
+            }
         } else {
             break;
         }
+        tkn = (Token*)(*node)->data;
     }
     return expr;
 }
@@ -258,7 +280,7 @@ static Expr* unary(Node** node)
     if (match(tkn->type, unaryTokens, 2, node)) {
         tknPrev = (Token*)(*node)->prev->data;
         rightExpr = unary(node);
-        return new_expr(UNARY, (void*)new_unary(*tknPrev, rightExpr));
+        return new_expr(EXPR_UNARY, (void*)new_unary(*tknPrev, rightExpr));
     }
 
     return call(node);
@@ -304,13 +326,26 @@ static Expr* equality(Node** node)
 
 static Expr* assignment(Node** node)
 {
-    Expr *expr = logicOr(node), *nextExpr = NULL;
+    Expr *expr = logicOr(node), *value = NULL;
     Node* equals = *node;
+    GetExpr* get = NULL;
+    SetExpr* set = NULL;
+
     if (MATCH(((Token*)equals->data)->type, EQUAL)) {
         (*node) = (*node)->next;
-        nextExpr = assignment(node);
-        if (expr != NULL && expr->type == VARIABLE) {
-            return new_expr(ASSIGNMENT, new_assignment(((VariableExpr*)expr->expr)->variableName, nextExpr));
+        value = assignment(node);
+        if (expr != NULL && expr->type == EXPR_VARIABLE) {
+            return new_expr(EXPR_ASSIGNMENT, new_assignment(((VariableExpr*)expr->expr)->variableName, value));
+        } else if (expr->type == EXPR_GET) {
+            get = (GetExpr*)expr->expr;
+            set = (SetExpr*)alloc(sizeof(SetExpr));
+            set->object = get->object;
+            set->name = get->name;
+            set->value = value;
+            fr(get);
+            expr->expr = set;
+            expr->type = EXPR_SET;
+            return expr;
         }
         parse_error((Token*)equals->data, "Invalid Assignment Target");
     }
@@ -324,7 +359,7 @@ static Expr* new_logical(Expr* left, Token op, Expr* right)
     logicalExpr->op = op;
     logicalExpr->left = left;
     logicalExpr->right = right;
-    return new_expr(LOGICAL, logicalExpr);
+    return new_expr(EXPR_LOGICAL, logicalExpr);
 }
 
 static Expr* logicOr(Node** node)
@@ -365,10 +400,10 @@ static Expr* expression(Node** node)
 
 static void synchronize(Node** node)
 {
+    Token *token = NULL, *prevToken;
     (*node) = (*node)->next;
     if (*node != NULL) {
-
-        const Token *token = (Token*)(*node)->data, *prevToken;
+        token = (Token*)(*node)->data;
         while (!END_OF_TOKENS(token->type)) {
             prevToken = (Token*)(*node)->prev->data;
             if (prevToken->type == SEMICOLON)
@@ -439,7 +474,7 @@ static Stmt* var_statement(Node** node, Expr* initializer, Token variableName)
 
 static Stmt* var_declaration(Node** node)
 {
-    Node** identifierNode = consume(node, IDENTIFIER, "Expected a variable name");
+    Node** identifierNode = consume(node, IDENTIFIER, "Expected a EXPR_VARIABLE name");
     Token* name = NULL;
     Expr* initializer = NULL;
 
@@ -482,16 +517,44 @@ static Stmt* statement(Node** node)
     return expression_statement(node);
 }
 
+static Stmt* class_statement(Node** node)
+{
+    ClassStmt* stmt = NULL;
+    Node** classNameNode = consume(node, IDENTIFIER, "Expect class name");
+    Token *name = NULL, *temp = NULL;
+    List* methods = NULL;
+
+    if (classNameNode == NULL) {
+        return NULL;
+    }
+    name = (Token*)(*classNameNode)->data;
+    consume(node, LEFT_BRACE, "Expect '{' before class body");
+    temp = (Token*)(*node)->data;
+    methods = list();
+    while (!MATCH(temp->type, RIGHT_BRACE) && !END_OF_TOKENS(temp->type)) {
+        list_push(methods, fun_statement("method", node));
+        temp = (Token*)(*node)->data;
+    }
+    consume(node, RIGHT_BRACE, "Expect '}' after class body");
+    stmt = (ClassStmt*)alloc(sizeof(ClassStmt));
+    stmt->methods = methods;
+    stmt->name = *name;
+    return new_statement(STMT_CLASS, stmt);
+}
+
 static Stmt* declaration(Node** node)
 {
     const Token* tkn = (Token*)((*node)->data);
     Stmt* stmt = NULL;
-    if (MATCH(tkn->type, VAR)) {
+    if (MATCH(tkn->type, CLASS)) {
         (*node) = (*node)->next;
-        stmt = var_declaration(node);
+        return class_statement(node);
     } else if (MATCH(tkn->type, FUN)) {
         (*node) = (*node)->next;
         return fun_statement("function", node);
+    } else if (MATCH(tkn->type, VAR)) {
+        (*node) = (*node)->next;
+        stmt = var_declaration(node);
     } else {
         stmt = statement(node);
     }
@@ -580,7 +643,7 @@ static Stmt* for_statement(Node** node)
     }
 
     if (condition == NULL) {
-        condition = new_expr(LITERAL, new_true());
+        condition = new_expr(EXPR_LITERAL, new_true());
     }
     wrappedFor = alloc(sizeof(WhileStmt));
     wrappedFor->condition = condition;
@@ -622,88 +685,94 @@ static Stmt* fun_statement(const char* kind, Node** node)
     memset(buf, 0, LINEBUFSIZE);
     sprintf(buf, "Expect %s name.", kind);
     temp = consume(node, IDENTIFIER, buf);
-    name = (Token*)(*temp)->data;
-    if (temp == NULL) {
-        // do something about missing fun name
+    if (temp != NULL) {
+
+        name = (Token*)(*temp)->data;
+        memset(buf, 0, LINEBUFSIZE);
+        sprintf(buf, "Expect '(' after %s name.", kind);
+        consume(node, LEFT_PAREN, buf);
+        params = list();
+        tkn = (Token*)(*node)->data;
+        if (!MATCH(tkn->type, RIGHT_PAREN)) {
+            do {
+                if (params->count > MAX_ARGS) {
+                    parse_error(tkn, "Cannot have more than 8 parameters.");
+                }
+                temp = consume(node, IDENTIFIER, "Expect parameter name.");
+                tkn = (Token*)(*temp)->data;
+                list_push(params, tkn);
+                tkn = (Token*)(*node)->data;
+                if (!MATCH(tkn->type, RIGHT_PAREN)) {
+                    (*node) = (*node)->next;
+                }
+            } while (MATCH(tkn->type, COMMA));
+        }
+        consume(node, RIGHT_PAREN, "Expect ')' after parameters.");
+        memset(buf, 0, LINEBUFSIZE);
+        sprintf(buf, "Expect '{' before %s body.", kind);
+        consume(node, LEFT_BRACE, buf);
+        body = block_statements(node);
+        fnStmt = alloc(sizeof(FunStmt));
+        fnStmt->name = *name;
+        fnStmt->body = body;
+        fnStmt->args = params;
+        return new_statement(STMT_FUN, fnStmt);
     }
-    memset(buf, 0, LINEBUFSIZE);
-    sprintf(buf, "Expect '(' after %s name.", kind);
-    consume(node, LEFT_PAREN, buf);
-    params = list();
-    tkn = (Token*)(*node)->data;
-    if (!MATCH(tkn->type, RIGHT_PAREN)) {
-        do {
-            if (params->count > MAX_ARGS) {
-                parse_error(tkn, "Cannot have more than 8 parameters.");
-            }
-            temp = consume(node, IDENTIFIER, "Expect parameter name.");
-            tkn = (Token*)(*temp)->data;
-            list_push(params, tkn);
-            tkn = (Token*)(*node)->data;
-            if (!MATCH(tkn->type, RIGHT_PAREN)) {
-                (*node) = (*node)->next;
-            }
-        } while (MATCH(tkn->type, COMMA));
-    }
-    consume(node, RIGHT_PAREN, "Expect ')' after parameters.");
-    memset(buf, 0, LINEBUFSIZE);
-    sprintf(buf, "Expect '{' before %s body.", kind);
-    consume(node, LEFT_BRACE, buf);
-    body = block_statements(node);
-    fnStmt = alloc(sizeof(FunStmt));
-    fnStmt->name = *name;
-    fnStmt->body = body;
-    fnStmt->args = params;
-    return new_statement(STMT_FUN, fnStmt);
+    return NULL;
 }
 
 static void expr_destroy(Expr* expr)
 {
     Expr* ex = NULL;
     switch (expr->type) {
-    case LITERAL:
+    case EXPR_LITERAL:
         fr(((LiteralExpr*)expr->expr)->value);
         fr(((LiteralExpr*)expr->expr));
         break;
-    case UNARY:
+    case EXPR_UNARY:
         ex = ((UnaryExpr*)expr->expr)->expr;
         expr_destroy(ex);
         break;
-    case BINARY:
+    case EXPR_BINARY:
         ex = ((BinaryExpr*)expr->expr)->leftExpr;
         expr_destroy(ex);
         ex = ((BinaryExpr*)expr->expr)->rightExpr;
         expr_destroy(ex);
         break;
-    case GROUPING:
+    case EXPR_GROUPING:
         ex = ((GroupingExpr*)expr->expr)->expr;
         expr_destroy(ex);
         break;
-    case ASSIGNMENT:
+    case EXPR_ASSIGNMENT:
         ex = ((AssignmentExpr*)expr->expr)->rightExpr;
         expr_destroy(ex);
         break;
-    case LOGICAL:
+    case EXPR_LOGICAL:
         ex = ((LogicalExpr*)expr->expr)->left;
         expr_destroy(ex);
         ex = ((LogicalExpr*)expr->expr)->right;
         expr_destroy(ex);
         break;
-    case CALL:
+    case EXPR_CALL:
         ex = ((CallExpr*)expr->expr)->callee;
         expr_destroy(ex);
         list_destroy(((CallExpr*)expr->expr)->args);
         break;
-    case VARIABLE:
+    case EXPR_VARIABLE:
     default:
         break;
     }
     fr(expr);
 }
 
-void stmt_destroy(void* stmtObj)
+static void stmts_foreach_stmt(List* stmts, void* stmtObj)
 {
     Stmt* stmt = (Stmt*)stmtObj;
+    stmt_destroy(stmt);
+}
+
+static void stmt_destroy(Stmt* stmt)
+{
     IfElseStmt* ifStmt = NULL;
     WhileStmt* whileStmt = NULL;
     FunStmt* fnStmt = NULL;
@@ -711,7 +780,7 @@ void stmt_destroy(void* stmtObj)
     if (stmt != NULL) {
         switch (stmt->type) {
         case STMT_BLOCK:
-            list_foreach(((BlockStmt*)stmt->realStmt)->innerStmts, stmt_destroy);
+            list_foreach(((BlockStmt*)stmt->realStmt)->innerStmts, stmts_foreach_stmt);
             break;
         case STMT_PRINT:
             expr_destroy(((PrintStmt*)stmt->realStmt)->expr);
@@ -741,6 +810,10 @@ void stmt_destroy(void* stmtObj)
         case STMT_RETURN:
             expr_destroy(((ReturnStmt*)stmt->realStmt)->value);
             break;
+        case STMT_CLASS:
+            list_foreach(((ClassStmt*)stmt->realStmt)->methods, stmts_foreach_stmt);
+            list_destroy(((ClassStmt*)stmt->realStmt)->methods);
+            break;
         }
         fr((void*)stmt);
     }
@@ -764,7 +837,7 @@ static Stmt* return_statement(Node** node)
 static void stmts_destroy(List* stmts)
 {
     if (stmts->count != 0) {
-        list_foreach(stmts, stmt_destroy);
+        list_foreach(stmts, stmts_foreach_stmt);
     }
     list_destroy(stmts);
 }

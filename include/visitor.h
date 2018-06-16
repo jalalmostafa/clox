@@ -14,6 +14,9 @@ typedef struct expression_visitor_t {
     ActionExpr visitAssignment;
     ActionExpr visitLogical;
     ActionExpr visitCallable;
+    ActionExpr visitGet;
+    ActionExpr visitSet;
+    ActionExpr visitThis;
 } ExpressionVisitor;
 
 typedef struct stmt_visitor_t {
@@ -25,6 +28,7 @@ typedef struct stmt_visitor_t {
     ActionStmt visitWhile;
     ActionStmt visitFun;
     ActionStmt visitReturn;
+    ActionStmt visitClass;
 } StmtVisitor;
 
 void* accept(StmtVisitor visitor, Stmt* stmt);

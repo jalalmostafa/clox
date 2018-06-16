@@ -3,14 +3,17 @@
 #include "tokenizer.h"
 
 typedef enum expr_type_t {
-    BINARY = 1,
-    GROUPING,
-    UNARY,
-    LITERAL,
-    VARIABLE,
-    ASSIGNMENT,
-    LOGICAL,
-    CALL
+    EXPR_BINARY = 1,
+    EXPR_GROUPING,
+    EXPR_UNARY,
+    EXPR_LITERAL,
+    EXPR_VARIABLE,
+    EXPR_ASSIGNMENT,
+    EXPR_LOGICAL,
+    EXPR_CALL,
+    EXPR_GET,
+    EXPR_SET,
+    EXPR_THIS
 } ExpressionType;
 
 typedef enum literal_expr_type_t {
@@ -20,7 +23,9 @@ typedef enum literal_expr_type_t {
     STRING_L,
     ERROR_L,
     VOID_L,
-    CALLABLE_L
+    CALLABLE_L,
+    CLASS_DEFINITION_L,
+    CLASS_INSTANCE_L
 } LiteralType;
 
 typedef struct expression_t {
@@ -71,6 +76,21 @@ typedef struct expression_call_t {
     List* args;
 } CallExpr;
 
+typedef struct expression_get_t {
+    Expr* object;
+    Token name;
+} GetExpr;
+
+typedef struct expression_set_t {
+    Expr* object;
+    Token name;
+    Expr* value;
+} SetExpr;
+
+typedef struct expression_this_t {
+    Token keyword;
+} ThisExpr;
+
 typedef enum stmt_type_t {
     STMT_PRINT,
     STMT_VAR_DECLARATION,
@@ -79,7 +99,8 @@ typedef enum stmt_type_t {
     STMT_IF_ELSE,
     STMT_WHILE,
     STMT_FUN,
-    STMT_RETURN
+    STMT_RETURN,
+    STMT_CLASS
 } StmtType;
 
 typedef struct stmt_t {
@@ -125,6 +146,11 @@ typedef struct stmt_return_t {
     Token keyword;
     Expr* value;
 } ReturnStmt;
+
+typedef struct stmt_class_t {
+    Token name;
+    List* methods;
+} ClassStmt;
 
 typedef struct parser_t {
     List* stmts;
