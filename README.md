@@ -5,8 +5,6 @@
 
 clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) treewalk interpreter in ANSI C.
 
-Currently working on: [Classes](http://craftinginterpreters.com/classes.html)
-
 ## Coding Conventions
 
 clox source code follows [Webkit Coding Convention](https://webkit.org/code-style-guidelines/). However, some rules are violated as follows:
