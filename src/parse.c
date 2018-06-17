@@ -148,6 +148,7 @@ static Expr* primary(Node** node)
     Token* tkn = (Token*)(*node)->data;
     double* doubleLiteral = NULL;
     ThisExpr* this = NULL;
+    SuperExpr* super = NULL;
 
     if (MATCH(tkn->type, TRUE)) {
         (*node) = (*node)->next;
@@ -184,6 +185,22 @@ static Expr* primary(Node** node)
             return NULL;
         }
         return new_expr(EXPR_GROUPING, (void*)new_grouping(groupedExpr));
+    }
+
+    if (MATCH(tkn->type, SUPER)) {
+        super = (SuperExpr*)alloc(sizeof(SuperExpr));
+        super->keyword = *(Token*)(*node)->prev->data;
+        if (consume(node, DOT, "Expect '.' after 'super'.") == NULL) {
+            fr(super);
+            return NULL;
+        }
+        n = consume(node, IDENTIFIER, "Expect superclass method name.");
+        if (n == NULL) {
+            fr(super);
+            return NULL;
+        }
+        super->method = *((Token*)(*n)->data);
+        return new_expr(EXPR_SUPER, super);
     }
 
     if (MATCH(tkn->type, THIS)) {
@@ -523,11 +540,23 @@ static Stmt* class_statement(Node** node)
     Node** classNameNode = consume(node, IDENTIFIER, "Expect class name");
     Token *name = NULL, *temp = NULL;
     List* methods = NULL;
+    Expr* superClassExpr = NULL;
+    VariableExpr* superClass = NULL;
 
     if (classNameNode == NULL) {
         return NULL;
     }
     name = (Token*)(*classNameNode)->data;
+    temp = (Token*)(*node)->data;
+    if (MATCH(temp->type, LESS)) {
+        (*node) = (*node)->next;
+        if (consume(node, IDENTIFIER, "Expect super class") == NULL) {
+            return NULL;
+        }
+        superClass = (VariableExpr*)alloc(sizeof(VariableExpr));
+        superClass->variableName = *((Token*)(*node)->prev->data);
+        superClassExpr = new_expr(EXPR_VARIABLE, superClass);
+    }
     consume(node, LEFT_BRACE, "Expect '{' before class body");
     temp = (Token*)(*node)->data;
     methods = list();
@@ -539,6 +568,7 @@ static Stmt* class_statement(Node** node)
     stmt = (ClassStmt*)alloc(sizeof(ClassStmt));
     stmt->methods = methods;
     stmt->name = *name;
+    stmt->super = superClassExpr;
     return new_statement(STMT_CLASS, stmt);
 }
 
@@ -724,6 +754,9 @@ static Stmt* fun_statement(const char* kind, Node** node)
 static void expr_destroy(Expr* expr)
 {
     Expr* ex = NULL;
+    SetExpr* set = NULL;
+    GetExpr* get = NULL;
+
     switch (expr->type) {
     case EXPR_LITERAL:
         fr(((LiteralExpr*)expr->expr)->value);
@@ -758,6 +791,19 @@ static void expr_destroy(Expr* expr)
         expr_destroy(ex);
         list_destroy(((CallExpr*)expr->expr)->args);
         break;
+        break;
+        break;
+    case EXPR_SET:
+        set = (SetExpr*)expr->expr;
+        expr_destroy(set->object);
+        expr_destroy(set->value);
+        break;
+    case EXPR_GET:
+        get = (GetExpr*)expr->expr;
+        expr_destroy(get->object);
+        break;
+    case EXPR_SUPER:
+    case EXPR_THIS:
     case EXPR_VARIABLE:
     default:
         break;

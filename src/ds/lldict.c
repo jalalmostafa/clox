@@ -53,10 +53,9 @@ int lldict_remove(LLDictionary* dict, const char* key)
 KeyValuePair* lldict_contains(LLDictionary* dict, const char* key)
 {
     Node* node = NULL;
-    int keyLength = strlen(key) + 1;
     if (dict != NULL) {
         for (node = dict->elements->head; node != NULL; node = node->next) {
-            if (memcmp(((KeyValuePair*)node->data)->key, key, keyLength) == 0) {
+            if (strcmp(((KeyValuePair*)node->data)->key, key) == 0) {
                 return (KeyValuePair*)node->data;
             }
         }

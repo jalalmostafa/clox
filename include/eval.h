@@ -41,6 +41,7 @@ typedef struct class_t {
     char* name;
     Callable* ctor;
     LLDictionary* methods;
+    Object* super;
 } Class;
 
 typedef struct class_instance_t {

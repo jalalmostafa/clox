@@ -9,6 +9,7 @@
 
 static void scope_begin();
 static void scope_end();
+static int scope_add(char* name, int value);
 static int resolve_list(List* Stmt);
 static int resolve_expr(Expr* expr);
 static int resolve_local(Expr* expr, Token name);
@@ -27,6 +28,7 @@ static void* visit_unary_expr_resolver(Expr* expr);
 static void* visit_get_expr_resolver(Expr* expr);
 static void* visit_set_expr_resolver(Expr* expr);
 static void* visit_this_expr_resolver(Expr* expr);
+static void* visit_super_expr_resolver(Expr* expr);
 
 ExpressionVisitor ExpressionResolver = {
     visit_binary_expr_resolver,
@@ -39,7 +41,8 @@ ExpressionVisitor ExpressionResolver = {
     visit_call_expr_resolver,
     visit_get_expr_resolver,
     visit_set_expr_resolver,
-    visit_this_expr_resolver
+    visit_this_expr_resolver,
+    visit_super_expr_resolver
 };
 
 static void* visit_block_stmt_resolver(Stmt* stmt);
@@ -79,6 +82,20 @@ static void scope_end()
 {
     LLDictionary* dict = (LLDictionary*)list_pop(scopes);
     lldict_destroy(dict);
+}
+
+static int scope_add(char* name, int value)
+{
+    LLDictionary* last = NULL;
+    int* realValue = NULL;
+    if (scopes->last == NULL) {
+        return 0;
+    }
+    last = (LLDictionary*)scopes->last->data;
+    realValue = (int*)alloc(sizeof(int));
+    *realValue = value;
+    lldict_add(last, name, realValue);
+    return 1;
 }
 
 static int declare(Token name)
@@ -279,6 +296,19 @@ static void* visit_this_expr_resolver(Expr* expr)
     return !resolve_local(expr, this->keyword) ? NULL : expr;
 }
 
+static void* visit_super_expr_resolver(Expr* expr)
+{
+    SuperExpr* super = (SuperExpr*)expr->expr;
+    if (current_class_type == CLASS_TYPE_NONE) {
+        parse_error(&super->keyword, "Cannot use 'super' outside of a class.");
+        return NULL;
+    } else if (current_class_type != CLASS_TYPE_CLASS) {
+        parse_error(&super->keyword, "Cannot use 'super' in a class with no superclass.");
+        return NULL;
+    }
+    return !resolve_local(expr, super->keyword) ? NULL : expr;
+}
+
 static void* visit_block_stmt_resolver(Stmt* stmt)
 {
     int resolved = 0;
@@ -372,20 +402,29 @@ static void class_foreach_method(List* methods, void* methodObj)
 
 static void* visit_class_stmt_resolver(Stmt* stmt)
 {
-    LLDictionary* last = NULL;
-    int* value = NULL;
+    int resolved = 1;
     ClassStmt* class = (ClassStmt*)stmt->realStmt;
     ClassType enclosedClassType = current_class_type;
     current_class_type = CLASS_TYPE_CLASS;
     declare(class->name);
     define(class->name);
+
+    if (class->super != NULL) {
+        current_class_type = CLASS_TYPE_SUBCLASS;
+        resolved = resolve_expr(class->super);
+        scope_begin();
+        scope_add("super", 1);
+    }
+
     scope_begin();
-    last = (LLDictionary*)scopes->last->data;
-    value = (int*)alloc(sizeof(int));
-    *value = 1;
-    lldict_add(last, "this", value);
+    scope_add("this", 1);
     list_foreach(class->methods, class_foreach_method);
     scope_end();
+
+    if (class->super != NULL) {
+        scope_end();
+    }
+
     current_class_type = enclosedClassType;
-    return stmt;
+    return !resolved ? NULL : stmt;
 }

@@ -26,6 +26,8 @@ void* accept_expr(ExpressionVisitor visitor, Expr* expr)
         return visitor.visitSet(expr);
     case EXPR_THIS:
         return visitor.visitThis(expr);
+    case EXPR_SUPER:
+        return visitor.visitSuper(expr);
     }
     return NULL;
 }

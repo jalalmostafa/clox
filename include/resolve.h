@@ -14,7 +14,8 @@ typedef enum function_type_t {
 
 typedef enum class_type_t {
     CLASS_TYPE_NONE,
-    CLASS_TYPE_CLASS
+    CLASS_TYPE_CLASS,
+    CLASS_TYPE_SUBCLASS
 } ClassType;
 
 #define RESOLVER_SUCCESS "RESOLVER_SUCCESS"

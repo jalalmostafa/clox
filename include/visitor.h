@@ -17,6 +17,7 @@ typedef struct expression_visitor_t {
     ActionExpr visitGet;
     ActionExpr visitSet;
     ActionExpr visitThis;
+    ActionExpr visitSuper;
 } ExpressionVisitor;
 
 typedef struct stmt_visitor_t {

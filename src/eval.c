@@ -23,6 +23,8 @@ void* visit_get(Expr* expr);
 void* visit_set(Expr* expr);
 void* visit_this(Expr* expr);
 
+void* visit_super(Expr* expr);
+
 void* visit_print(Stmt* stmt);
 void* visit_expr(Stmt* stmt);
 void* visit_var(Stmt* stmt);
@@ -35,6 +37,7 @@ void* visit_class(Stmt* stmt);
 
 static Object* execute_block(BlockStmt* stmt);
 static Object* instance_get(Object* instance, Token name);
+static Object* find_method(Class type, Object* instanceObj, char* name);
 static void instance_set(ClassInstance* instance, Token name, Object* value);
 static Object* lookup_var(int order, char* name);
 static void callable_bind(Object* instanceObj, Callable* method);
@@ -50,7 +53,8 @@ ExpressionVisitor EvaluateExpressionVisitor = {
     visit_callable,
     visit_get,
     visit_set,
-    visit_this
+    visit_this,
+    visit_super
 };
 
 StmtVisitor EvaluateStmtVisitor = {
@@ -97,6 +101,7 @@ static Object* runtime_error(const char* format, Object** obj, int line, ...)
     const char* runtimeError = "Runtime Error (at Line %d): ";
     int len = 0;
     char buffer[LINEBUFSIZE];
+    Object* temp = NULL;
     va_list fields;
     memset(buffer, 0, LINEBUFSIZE);
     sprintf(buffer, runtimeError, line);
@@ -104,6 +109,10 @@ static Object* runtime_error(const char* format, Object** obj, int line, ...)
     vsnprintf((char* const)(buffer + strlen(buffer)), LINEBUFSIZE, format, fields);
     va_end(fields);
     len = strlen(buffer) + 1;
+    if (obj == NULL) {
+        obj = &temp;
+    }
+
     if (*obj == NULL) {
         *obj = (Object*)alloc(sizeof(Object));
     }
@@ -245,7 +254,7 @@ void* visit_binary(Expr* expr)
 void* visit_unary(Expr* expr)
 {
     const UnaryExpr* uexpr = (UnaryExpr*)(expr->expr);
-    Object* rObject = eval_expr(uexpr->expr), *result = NULL;
+    Object *rObject = eval_expr(uexpr->expr), *result = NULL;
     char* bValue = NULL;
     double* value = NULL;
     if (uexpr->op.type == BANG) {
@@ -407,6 +416,26 @@ void* visit_this(Expr* expr)
 {
     ThisExpr* this = (ThisExpr*)expr->expr;
     return lookup_var(expr->order, this->keyword.lexeme);
+}
+
+void* visit_super(Expr* expr)
+{
+    SuperExpr* super = (SuperExpr*)expr->expr;
+    Object* superTypeObj = env_get_variable_value_at(CurrentEnv, expr->order, "super");
+    Object* superThisObj = env_get_variable_value_at(CurrentEnv, expr->order - 1, "this");
+    Object* method = NULL;
+
+    Class* superType = NULL;
+
+    if (superTypeObj == NULL) {
+        return NULL;
+    }
+    superType = (Class*)superTypeObj->value;
+    method = find_method(*superType, superThisObj, super->method.lexeme);
+    if (method == NULL) {
+        return runtime_error("Undefined property '%s'.", NULL, super->method.line, super->method.lexeme);
+    }
+    return method;
 }
 
 void* visit_print(Stmt* stmt)
@@ -622,10 +651,27 @@ void* visit_class(Stmt* stmt)
     Node* n = NULL;
     FunStmt* funStmt = NULL;
     ClassStmt* classStmt = (ClassStmt*)stmt->realStmt;
-    Class* class = (Class*)alloc(sizeof(Class));
-    Callable *ctor = (Callable*)alloc(sizeof(Callable)), *customCtor = NULL;
+    Class* class = NULL;
+    Callable *ctor = NULL, *customCtor = NULL;
     Object* callable = NULL;
+    Object* super = NULL;
+    VariableExpr* superExpr = NULL;
+    ExecutionEnvironment* env = env_new();
 
+    if (classStmt->super != NULL) {
+        super = eval_expr(classStmt->super);
+        if (super == NULL || super->type != OBJ_CLASS_DEFINITION) {
+            superExpr = (VariableExpr*)classStmt->super->expr;
+            return runtime_error("Superclass must be a class.", NULL, superExpr->variableName.line);
+        }
+    }
+
+    if (super != NULL) {
+        env_add_variable(env, "super", super);
+    }
+
+    class = (Class*)alloc(sizeof(Class));
+    ctor = (Callable*)alloc(sizeof(Callable));
     ctor->arity = 0;
     ctor->type = FUNCTION_TYPE_CTOR;
     ctor->closure = CurrentEnv;
@@ -634,7 +680,7 @@ void* visit_class(Stmt* stmt)
     class->name = clone(classStmt->name.lexeme, strlen(classStmt->name.lexeme) + 1);
     class->ctor = ctor;
     class->methods = lldict();
-
+    class->super = super;
     for (n = classStmt->methods->head; n != NULL; n = n->next) {
         funStmt = (FunStmt*)((Stmt*)n->data)->realStmt;
         callable = build_function(funStmt, CurrentEnv, FUNCTION_TYPE_METHOD);
@@ -648,6 +694,11 @@ void* visit_class(Stmt* stmt)
     }
 
     env_add_variable(CurrentEnv, class->name, obj_new(OBJ_CLASS_DEFINITION, class, sizeof(Class)));
+
+    if (super != NULL) {
+        env->enclosing = CurrentEnv;
+    }
+
     return new_void();
 }
 
@@ -667,9 +718,9 @@ void obj_destroy(Object* obj)
 
     if (obj != NULL && obj->shallow == 1) {
         switch (obj->type) {
-        case OBJ_NIL:
         case OBJ_VOID:
             break;
+        case OBJ_NIL:
         case OBJ_BOOL:
         case OBJ_NUMBER:
         case OBJ_STRING:
@@ -686,6 +737,7 @@ void obj_destroy(Object* obj)
             callable_destroy(class->ctor);
             fr(class->ctor);
             fr(class->name);
+            obj_destroy(class->super);
             fr(obj->value);
             break;
         case OBJ_CLASS_INSTANCE:
@@ -754,19 +806,35 @@ static void callable_bind(Object* instanceObj, Callable* method)
     method->closure = classEnv;
 }
 
+static Object* find_method(Class type, Object* instanceObj, char* name)
+{
+    Object* member = NULL;
+    Callable* method = NULL;
+    Class* superType = NULL;
+
+    member = lldict_get(type.methods, name);
+    if (member != NULL) {
+        method = (Callable*)member->value;
+        callable_bind(instanceObj, method);
+    } else if (type.super != NULL) {
+        superType = (Class*)type.super->value;
+        member = find_method(*superType, instanceObj, name);
+    }
+
+    return member;
+}
+
 static Object* instance_get(Object* instanceObj, Token name)
 {
     Object* member = NULL;
     ClassInstance* instance = (ClassInstance*)instanceObj->value;
-    Callable* method = NULL;
+
     if (lldict_contains(instance->fields, name.lexeme)) {
         return lldict_get(instance->fields, name.lexeme);
     }
 
-    if (lldict_contains(instance->type.methods, name.lexeme)) {
-        member = lldict_get(instance->type.methods, name.lexeme);
-        method = (Callable*)member->value;
-        callable_bind(instanceObj, method);
+    member = find_method(instance->type, instanceObj, name.lexeme);
+    if (member != NULL) {
         return member;
     }
 

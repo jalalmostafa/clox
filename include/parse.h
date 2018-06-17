@@ -13,7 +13,8 @@ typedef enum expr_type_t {
     EXPR_CALL,
     EXPR_GET,
     EXPR_SET,
-    EXPR_THIS
+    EXPR_THIS,
+    EXPR_SUPER
 } ExpressionType;
 
 typedef enum literal_expr_type_t {
@@ -86,6 +87,11 @@ typedef struct expression_this_t {
     Token keyword;
 } ThisExpr;
 
+typedef struct expression_super_t {
+    Token keyword;
+    Token method;
+} SuperExpr;
+
 typedef enum stmt_type_t {
     STMT_PRINT,
     STMT_VAR_DECLARATION,
@@ -145,6 +151,7 @@ typedef struct stmt_return_t {
 typedef struct stmt_class_t {
     Token name;
     List* methods;
+    Expr* super;
 } ClassStmt;
 
 typedef struct parser_t {
