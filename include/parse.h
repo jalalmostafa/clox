@@ -17,15 +17,10 @@ typedef enum expr_type_t {
 } ExpressionType;
 
 typedef enum literal_expr_type_t {
-    NIL_L,
-    BOOL_L,
-    NUMBER_L,
-    STRING_L,
-    ERROR_L,
-    VOID_L,
-    CALLABLE_L,
-    CLASS_DEFINITION_L,
-    CLASS_INSTANCE_L
+    LITERAL_NIL,
+    LITERAL_BOOL,
+    LITERAL_NUMBER,
+    LITERAL_STRING
 } LiteralType;
 
 typedef struct expression_t {

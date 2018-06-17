@@ -70,38 +70,21 @@ ExecutionEnvironment* CurrentEnv = &GlobalExecutionEnvironment;
 
 static Object* new_void()
 {
-    Object* obj = (Object*)alloc(sizeof(Object));
-    obj->type = OBJ_VOID;
-    obj->value = NULL;
-    obj->valueSize = 0;
-    return obj;
+    return obj_new(OBJ_VOID, NULL, 0);
 }
 
 static Object* new_number(double value)
 {
-    double* holder = NULL;
-    Object* result = NULL;
-    result = (Object*)alloc(sizeof(Object));
-    memset(result, 0, sizeof(Object));
-    result->type = OBJ_NUMBER;
-    result->value = alloc(sizeof(double));
-    result->valueSize = sizeof(double);
-    holder = (double*)result->value;
+    double* holder = (double*)alloc(sizeof(double));
     *holder = value;
-    return result;
+    return obj_new(OBJ_NUMBER, holder, sizeof(double));
 }
 
 static Object* new_bool(int truthy)
 {
-    Object* result = NULL;
-    const char* truthyValue = truthy ? TRUE_KEY : FALSE_KEY;
-    int valueSize = strlen(truthyValue) + 1;
-    result = (Object*)alloc(sizeof(Object));
-    memset(result, 0, sizeof(Object));
-    result->type = OBJ_BOOL;
-    result->value = clone((void*)truthyValue, valueSize);
-    result->valueSize = valueSize;
-    return result;
+    char* value = (char*)alloc(sizeof(char));
+    *value = (char)truthy;
+    return obj_new(OBJ_BOOL, value, 1);
 }
 
 static Object* eval_expr(Expr* expr)
@@ -225,9 +208,10 @@ void* visit_binary(Expr* expr)
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
             result = new_bool(*lvalue == *rvalue);
-        } else if ((rObject->type == OBJ_STRING && lObject->type == OBJ_STRING)
-            || (rObject->type == OBJ_BOOL && lObject->type == OBJ_BOOL)) {
+        } else if (rObject->type == OBJ_STRING && lObject->type == OBJ_STRING) {
             result = new_bool(strcmp((char*)rObject->value, (char*)lObject->value) == 0);
+        } else if (rObject->type == OBJ_BOOL && lObject->type == OBJ_BOOL) {
+            result = new_bool(*((char*)rObject->value) == *((char*)lObject->value));
         } else {
             result = new_bool(0);
         }
@@ -239,9 +223,10 @@ void* visit_binary(Expr* expr)
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
             result = new_bool(*lvalue != *rvalue);
-        } else if ((rObject->type == OBJ_STRING && lObject->type == OBJ_STRING)
-            || (rObject->type == OBJ_BOOL && lObject->type == OBJ_BOOL)) {
+        } else if (rObject->type == OBJ_STRING && lObject->type == OBJ_STRING) {
             result = new_bool(strcmp((char*)rObject->value, (char*)lObject->value) != 0);
+        } else if (rObject->type == OBJ_BOOL && lObject->type == OBJ_BOOL) {
+            result = new_bool(*((char*)rObject->value) != (*(char*)lObject->value));
         } else {
             result = new_bool(1);
         }
@@ -260,22 +245,22 @@ void* visit_binary(Expr* expr)
 void* visit_unary(Expr* expr)
 {
     const UnaryExpr* uexpr = (UnaryExpr*)(expr->expr);
-    Object* rObject = eval_expr(uexpr->expr);
-    const char* st = NULL;
+    Object* rObject = eval_expr(uexpr->expr), *result = NULL;
+    char* bValue = NULL;
     double* value = NULL;
     if (uexpr->op.type == BANG) {
-        st = obj_unlikely(rObject);
-        fr(rObject->value);
-        rObject->type = OBJ_BOOL;
-        rObject->value = clone((void*)st, strlen(st) + 1);
+        obj_destroy(rObject);
+        bValue = (char*)alloc(sizeof(char));
+        *bValue = obj_unlikely(rObject);
+        rObject = obj_new(OBJ_BOOL, bValue, 1);
     } else if (uexpr->op.type == MINUS) {
         if (rObject->type != OBJ_NUMBER) {
             runtime_error(OPERAND_NUMBER, &rObject, uexpr->op.line);
         } else {
             value = (double*)clone(rObject->value, sizeof(double));
             *value = -*value;
-            fr(rObject->value);
-            rObject->value = value;
+            obj_destroy(rObject);
+            rObject = obj_new(OBJ_NUMBER, value, sizeof(double));
         }
     }
     return rObject;
@@ -290,9 +275,20 @@ void* visit_grouping(Expr* expr)
 void* visit_literal(Expr* expr)
 {
     LiteralExpr* original = (LiteralExpr*)(expr->expr);
-    Object* result = (Object*)clone(original, sizeof(LiteralExpr));
-    result->value = clone(original->value, original->valueSize);
-    return result;
+    char* bValue = NULL;
+    switch (original->type) {
+    case LITERAL_STRING:
+        return obj_new(OBJ_STRING, clone(original->value, original->valueSize), original->valueSize);
+    case LITERAL_NUMBER:
+        return obj_new(OBJ_NUMBER, clone(original->value, original->valueSize), original->valueSize);
+    case LITERAL_NIL:
+        return obj_new(OBJ_NIL, clone(original->value, original->valueSize), original->valueSize);
+    case LITERAL_BOOL:
+        bValue = (char*)alloc(sizeof(char));
+        *bValue = (char)(strcmp((char*)original->value, TRUE_KEY) == 0 ? 1 : 0);
+        return obj_new(OBJ_BOOL, bValue, 1);
+    }
+    return NULL;
 }
 
 static Object* lookup_var(int order, char* name)
@@ -337,7 +333,7 @@ void* visit_logical(Expr* expr)
 {
     LogicalExpr* logical = (LogicalExpr*)(expr->expr);
     Object* lvalue = eval_expr(logical->left);
-    int lvalueTruth = obj_likely(lvalue);
+    char lvalueTruth = obj_likely(lvalue);
     if (logical->op.type == OR) {
         if (lvalueTruth) {
             return lvalue;
@@ -421,12 +417,17 @@ void* visit_print(Stmt* stmt)
     ClassInstance* instance = NULL;
     Object* obj = eval_expr(printStmt->expr);
     double* value = NULL;
+    char* bValue = NULL;
+
     switch (obj->type) {
     case OBJ_STRING:
-    case OBJ_BOOL:
     case OBJ_NIL:
     case OBJ_ERROR:
         printf("%s\n", (char*)obj->value);
+        break;
+    case OBJ_BOOL:
+        bValue = (char*)obj->value;
+        printf("%s\n", *bValue == 1 ? TRUE_KEY : FALSE_KEY);
         break;
     case OBJ_NUMBER:
         value = (double*)obj->value;
@@ -667,11 +668,12 @@ void obj_destroy(Object* obj)
     if (obj != NULL && obj->shallow == 1) {
         switch (obj->type) {
         case OBJ_NIL:
+        case OBJ_VOID:
+            break;
         case OBJ_BOOL:
         case OBJ_NUMBER:
         case OBJ_STRING:
         case OBJ_ERROR:
-        case OBJ_VOID:
             fr(obj->value);
             break;
         case OBJ_CALLABLE:
@@ -709,30 +711,34 @@ Object* obj_new(ObjectType type, void* value, int valueSize)
     return obj;
 }
 
-int obj_likely(Object* obj)
+char obj_likely(Object* obj)
 {
+    char* value = NULL;
     if (obj->type == OBJ_NIL) {
-        return 0;
+        return (char)0;
     }
 
     if (obj->type == OBJ_BOOL) {
-        return strcmp((char*)obj->value, TRUE_KEY) == 0;
+        value = (char*)obj->value;
+        return *value == (char)1;
     }
 
-    return 1;
+    return (char)1;
 }
 
-const char* obj_unlikely(Object* expr)
+char obj_unlikely(Object* obj)
 {
-    if (expr->type == OBJ_NIL) {
-        return TRUE_KEY;
+    char* value = NULL;
+    if (obj->type == OBJ_NIL) {
+        return (char)0;
     }
 
-    if (expr->type == OBJ_BOOL) {
-        return strcmp(TRUE_KEY, (const char*)expr->value) != 0 ? TRUE_KEY : FALSE_KEY;
+    if (obj->type == OBJ_BOOL) {
+        value = (char*)obj->value;
+        return *value != (char)1;
     }
 
-    return FALSE_KEY;
+    return (char)0;
 }
 
 void eval(Stmt* stmt)

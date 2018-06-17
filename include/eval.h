@@ -60,8 +60,8 @@ Object* env_get_variable_value_at(ExecutionEnvironment* env, unsigned int order,
 
 void obj_destroy(Object* obj);
 Object* obj_new(ObjectType type, void* value, int valueSize);
-int obj_likely(Object* obj);
-const char* obj_unlikely(Object* expr);
+char obj_likely(Object* obj);
+char obj_unlikely(Object* expr);
 
 extern ExecutionEnvironment GlobalExecutionEnvironment;
 
