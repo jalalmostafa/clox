@@ -20,6 +20,7 @@ typedef struct object_t {
     ObjectType type;
     int valueSize;
     int shallow;
+    int propagateReturn;
 } Object;
 
 typedef struct env_t {

@@ -173,7 +173,7 @@ static int resolve_local(Expr* expr, Token name)
     for (node = scopes->last; i >= 0 && node != NULL; node = node->prev) {
         scope = (LLDictionary*)node->data;
         if (lldict_contains(scope, name.lexeme) != NULL) {
-            expr->order = scopes->count != 1 ? scopes->count - 1 - i : scopes->count - i;
+            expr->order = scopes->count - i;
             return 1;
         }
         i--;

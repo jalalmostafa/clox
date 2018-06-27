@@ -114,8 +114,19 @@ int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, con
     return 1;
 }
 
+static void env_clear_values(List* them, void* pairObj)
+{
+    KeyValuePair* pair = (KeyValuePair*)pairObj;
+    Object* obj = (Object*)pair->value;
+    obj->shallow = 1;
+    obj_destroy(obj);
+}
+
 void env_destroy(ExecutionEnvironment* env)
 {
+    if (env->variables != NULL) {
+        list_foreach(env->variables->elements, env_clear_values);
+    }
     lldict_destroy(env->variables);
     env->variables = NULL;
 }

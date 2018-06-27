@@ -4,7 +4,7 @@ fun add(a, b) {
   print a + b;
 }
 
-add(1,2);
+add(3, 10);
 
 fun sub(a, b) {
   return a - b;

@@ -254,7 +254,7 @@ void* visit_binary(Expr* expr)
 void* visit_unary(Expr* expr)
 {
     const UnaryExpr* uexpr = (UnaryExpr*)(expr->expr);
-    Object *rObject = eval_expr(uexpr->expr), *result = NULL;
+    Object* rObject = eval_expr(uexpr->expr);
     char* bValue = NULL;
     double* value = NULL;
     if (uexpr->op.type == BANG) {
@@ -364,12 +364,6 @@ void* visit_callable(Expr* expr)
     Node* node = NULL;
     Expr* arg = NULL;
     Object* result = NULL;
-    if (calleeExpr->args->count != 0) {
-        for (node = calleeExpr->args->head; node != NULL; node = node->next) {
-            arg = (Expr*)node->data;
-            list_push(args, eval_expr(arg));
-        }
-    }
 
     if (callee->type != OBJ_CALLABLE && callee->type != OBJ_CLASS_DEFINITION) {
         list_destroy(args);
@@ -378,10 +372,18 @@ void* visit_callable(Expr* expr)
 
     callable = callee->type == OBJ_CALLABLE ? (Callable*)callee->value : ((Class*)callee->value)->ctor;
 
+    if (calleeExpr->args->count != 0) {
+        for (node = calleeExpr->args->head; node != NULL; node = node->next) {
+            arg = (Expr*)node->data;
+            list_push(args, eval_expr(arg));
+        }
+    }
+
     if (args->count != callable->arity) {
         list_destroy(args);
         return runtime_error("Expected %d but got %d arguments", &callee, calleeExpr->paren.line, args->count, callable->arity);
     }
+
     result = callable->call(args, callable->declaration, callable->closure, callable->type);
 
     obj_destroy(callee);
@@ -469,6 +471,7 @@ void* visit_print(Stmt* stmt)
     case OBJ_CALLABLE:
         call = (Callable*)obj->value;
         printf("<fn %s>\n", ((FunStmt*)call->declaration)->name.lexeme);
+        break;
     case OBJ_CLASS_DEFINITION:
         class = (Class*)obj->value;
         printf("<class %s>\n", class->name);
@@ -503,35 +506,57 @@ void* visit_var(Stmt* stmt)
 
     return value;
 }
+static void obj_destroy_in_list(List* objs, void* obj)
+{
+    Object* o = (Object*)obj;
+    obj_destroy(o);
+}
 
 static Object* execute_block(BlockStmt* stmt)
 {
     Stmt* innerStmt = NULL;
     Node* node = NULL;
+    List* dump = NULL;
+    Object* obj = NULL;
+    int propagateReturn = 0;
+
     for (node = stmt->innerStmts->head; node != NULL; node = node->next) {
         innerStmt = (Stmt*)node->data;
         if (innerStmt->type == STMT_RETURN) {
-            return accept(EvaluateStmtVisitor, innerStmt);
+            obj = accept(EvaluateStmtVisitor, innerStmt);
         } else {
-            accept(EvaluateStmtVisitor, innerStmt);
+            if (dump == NULL) {
+                dump = list();
+            }
+            obj = accept(EvaluateStmtVisitor, innerStmt);
+            if (obj->propagateReturn) {
+                break;
+            } else {
+                list_push(dump, obj);
+            }
         }
     }
-    return new_void();
+    propagateReturn = obj->propagateReturn;
+    if (!obj->propagateReturn) {
+        list_foreach(dump, obj_destroy_in_list);
+    }
+    list_destroy(dump);
+    return propagateReturn ? obj : new_void();
 }
 
 void* visit_block(Stmt* stmt)
 {
     BlockStmt* blockStmt = (BlockStmt*)(stmt->realStmt);
+    Object* returnValue = NULL;
     ExecutionEnvironment *prevEnv = CurrentEnv, *env = env_new();
     env->variables = NULL;
     env->enclosing = prevEnv;
     CurrentEnv = env;
-    execute_block(blockStmt);
-    env_destroy(CurrentEnv);
-    CurrentEnv = prevEnv;
+    returnValue = execute_block(blockStmt);
     env_destroy(env);
     fr(env);
-    return new_void();
+    CurrentEnv = prevEnv;
+    return returnValue;
 }
 
 void* visit_ifElse(Stmt* stmt)
@@ -563,8 +588,8 @@ static Object* fun_call(List* args, void* declaration, ExecutionEnvironment* clo
     Node *node = NULL, *valueWrapper = NULL;
     int i = 0;
     Object* value = NULL;
-    ExecutionEnvironment *prevEnv = CurrentEnv, *env = closure;
-    env->enclosing = prevEnv;
+    ExecutionEnvironment *prevEnv = CurrentEnv, *env = env_new();
+    env->enclosing = closure;
     CurrentEnv = env;
 
     for (node = funDecl->args->head; node != NULL; node = node->next) {
@@ -589,7 +614,6 @@ static Object* fun_call(List* args, void* declaration, ExecutionEnvironment* clo
         obj_destroy(value);
         value = env_get_variable_value(CurrentEnv, "this");
     }
-
     CurrentEnv = prevEnv;
     return value;
 }
@@ -619,11 +643,12 @@ void* visit_return(Stmt* stmt)
 {
     Object* value = new_void();
     ReturnStmt* returnStmt = (ReturnStmt*)(stmt->realStmt);
+
     if (returnStmt->value != NULL) {
         obj_destroy(value);
         value = eval_expr(returnStmt->value);
     }
-
+    value->propagateReturn = 1;
     return value;
 }
 
@@ -760,6 +785,7 @@ Object* obj_new(ObjectType type, void* value, int valueSize)
     obj->value = value;
     obj->valueSize = valueSize;
     obj->shallow = 1;
+    obj->propagateReturn = 0;
     return obj;
 }
 
