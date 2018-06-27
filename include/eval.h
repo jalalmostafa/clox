@@ -19,8 +19,8 @@ typedef struct object_t {
     void* value;
     ObjectType type;
     int valueSize;
-    int shallow;
-    int propagateReturn;
+    char shallow;
+    char propagateReturn;
 } Object;
 
 typedef struct env_t {

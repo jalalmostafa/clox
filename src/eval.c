@@ -287,11 +287,11 @@ void* visit_literal(Expr* expr)
     char* bValue = NULL;
     switch (original->type) {
     case LITERAL_STRING:
-        return obj_new(OBJ_STRING, clone(original->value, original->valueSize), original->valueSize);
+        return obj_new(OBJ_STRING, original->value, original->valueSize);
     case LITERAL_NUMBER:
-        return obj_new(OBJ_NUMBER, clone(original->value, original->valueSize), original->valueSize);
+        return obj_new(OBJ_NUMBER, original->value, original->valueSize);
     case LITERAL_NIL:
-        return obj_new(OBJ_NIL, clone(original->value, original->valueSize), original->valueSize);
+        return obj_new(OBJ_NIL, NULL, 0);
     case LITERAL_BOOL:
         bValue = (char*)alloc(sizeof(char));
         *bValue = (char)(strcmp((char*)original->value, TRUE_KEY) == 0 ? 1 : 0);
@@ -453,6 +453,8 @@ void* visit_print(Stmt* stmt)
     switch (obj->type) {
     case OBJ_STRING:
     case OBJ_NIL:
+        printf("nil\n");
+        break;
     case OBJ_ERROR:
         printf("%s\n", (char*)obj->value);
         break;
@@ -702,7 +704,7 @@ void* visit_class(Stmt* stmt)
     ctor->closure = CurrentEnv;
     ctor->declaration = class;
     ctor->call = instantiate;
-    class->name = clone(classStmt->name.lexeme, strlen(classStmt->name.lexeme) + 1);
+    class->name = classStmt->name.lexeme;
     class->ctor = ctor;
     class->methods = lldict();
     class->super = super;
@@ -729,7 +731,7 @@ void* visit_class(Stmt* stmt)
 
 static void callable_destroy(Callable* callable)
 {
-    if (GlobalExecutionEnvironment.variables != callable->closure->variables) {
+    if (callable->closure != NULL && GlobalExecutionEnvironment.variables != callable->closure->variables) {
         env_destroy(callable->closure);
         fr(callable->closure);
     }
@@ -744,11 +746,11 @@ void obj_destroy(Object* obj)
     if (obj != NULL && obj->shallow == 1) {
         switch (obj->type) {
         case OBJ_VOID:
-            break;
         case OBJ_NIL:
         case OBJ_BOOL:
         case OBJ_NUMBER:
         case OBJ_STRING:
+            break;
         case OBJ_ERROR:
             fr(obj->value);
             break;
@@ -761,7 +763,6 @@ void obj_destroy(Object* obj)
             class = (Class*)obj->value;
             callable_destroy(class->ctor);
             fr(class->ctor);
-            fr(class->name);
             obj_destroy(class->super);
             fr(obj->value);
             break;
@@ -780,7 +781,7 @@ void obj_destroy(Object* obj)
 
 Object* obj_new(ObjectType type, void* value, int valueSize)
 {
-    Object* obj = alloc(sizeof(Object));
+    Object* obj = (Object*)alloc(sizeof(Object));
     obj->type = type;
     obj->value = value;
     obj->valueSize = valueSize;
