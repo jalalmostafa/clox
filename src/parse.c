@@ -125,20 +125,21 @@ static Expr* binary_production(Node** node, Expr* (*rule)(Node** t), TokenType m
 
 LiteralExpr* new_true()
 {
-    int valueSize = strlen(TRUE_KEY) + 1;
-    return new_literal(clone((void*)TRUE_KEY, valueSize), LITERAL_BOOL, valueSize);
+    char* value = (char*)alloc(sizeof(char));
+    *value = 1;
+    return new_literal(value, LITERAL_BOOL, 1);
 }
 
 LiteralExpr* new_false()
 {
-    int valueSize = strlen(FALSE_KEY) + 1;
-    return new_literal(clone((void*)FALSE_KEY, valueSize), LITERAL_BOOL, valueSize);
+    char* value = (char*)alloc(sizeof(char));
+    *value = 0;
+    return new_literal(value, LITERAL_BOOL, 1);
 }
 
 LiteralExpr* new_nil()
 {
-    int valueSize = strlen(NIL_KEY) + 1;
-    return new_literal(clone((void*)NIL_KEY, valueSize), LITERAL_NIL, valueSize);
+    return new_literal(NULL, LITERAL_NIL, 0);
 }
 
 static Expr* primary(Node** node)
@@ -167,7 +168,7 @@ static Expr* primary(Node** node)
 
     if (MATCH(tkn->type, STRING)) {
         (*node) = (*node)->next;
-        return new_expr(EXPR_LITERAL, new_literal(clone(tkn->literal, strlen(tkn->literal) + 1), LITERAL_STRING, strlen(tkn->literal) + 1));
+        return new_expr(EXPR_LITERAL, new_literal(tkn->literal, LITERAL_STRING, strlen(tkn->literal) + 1));
     }
 
     if (MATCH(tkn->type, NUMBER)) {
@@ -751,16 +752,32 @@ static Stmt* fun_statement(const char* kind, Node** node)
     return NULL;
 }
 
+static void literal_destroy(LiteralExpr* expr)
+{
+    switch (expr->type) {
+    case LITERAL_BOOL:
+    case LITERAL_NUMBER:
+        fr(expr->value);
+        break;
+    case LITERAL_NIL:
+        break;
+    case LITERAL_STRING:
+        break;
+    }
+    fr(expr);
+}
+
 static void expr_destroy(Expr* expr)
 {
     Expr* ex = NULL;
     SetExpr* set = NULL;
     GetExpr* get = NULL;
+    LiteralExpr* literal = NULL;
 
     switch (expr->type) {
     case EXPR_LITERAL:
-        fr(((LiteralExpr*)expr->expr)->value);
-        fr(((LiteralExpr*)expr->expr));
+        literal = (LiteralExpr*)expr->expr;
+        literal_destroy(literal);
         break;
     case EXPR_UNARY:
         ex = ((UnaryExpr*)expr->expr)->expr;

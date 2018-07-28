@@ -220,7 +220,7 @@ void* visit_binary(Expr* expr)
         } else if (rObject->type == OBJ_STRING && lObject->type == OBJ_STRING) {
             result = new_bool(strcmp((char*)rObject->value, (char*)lObject->value) == 0);
         } else if (rObject->type == OBJ_BOOL && lObject->type == OBJ_BOOL) {
-            result = new_bool(*((char*)rObject->value) == *((char*)lObject->value));
+            result = new_bool(((char*)rObject->value)[0] == ((char*)lObject->value)[0]);
         } else {
             result = new_bool(0);
         }
@@ -235,7 +235,7 @@ void* visit_binary(Expr* expr)
         } else if (rObject->type == OBJ_STRING && lObject->type == OBJ_STRING) {
             result = new_bool(strcmp((char*)rObject->value, (char*)lObject->value) != 0);
         } else if (rObject->type == OBJ_BOOL && lObject->type == OBJ_BOOL) {
-            result = new_bool(*((char*)rObject->value) != (*(char*)lObject->value));
+            result = new_bool(((char*)rObject->value)[0] != ((char*)lObject->value)[0]);
         } else {
             result = new_bool(1);
         }
@@ -258,10 +258,10 @@ void* visit_unary(Expr* expr)
     char* bValue = NULL;
     double* value = NULL;
     if (uexpr->op.type == BANG) {
-        obj_destroy(rObject);
         bValue = (char*)alloc(sizeof(char));
         *bValue = obj_unlikely(rObject);
-        rObject = obj_new(OBJ_BOOL, bValue, 1);
+        obj_destroy(rObject);
+        rObject = obj_new(OBJ_BOOL, bValue, sizeof(char));
     } else if (uexpr->op.type == MINUS) {
         if (rObject->type != OBJ_NUMBER) {
             runtime_error(OPERAND_NUMBER, &rObject, uexpr->op.line);
@@ -284,7 +284,6 @@ void* visit_grouping(Expr* expr)
 void* visit_literal(Expr* expr)
 {
     LiteralExpr* original = (LiteralExpr*)(expr->expr);
-    char* bValue = NULL;
     switch (original->type) {
     case LITERAL_STRING:
         return obj_new(OBJ_STRING, original->value, original->valueSize);
@@ -293,9 +292,7 @@ void* visit_literal(Expr* expr)
     case LITERAL_NIL:
         return obj_new(OBJ_NIL, NULL, 0);
     case LITERAL_BOOL:
-        bValue = (char*)alloc(sizeof(char));
-        *bValue = (char)(strcmp((char*)original->value, TRUE_KEY) == 0 ? 1 : 0);
-        return obj_new(OBJ_BOOL, bValue, 1);
+        return obj_new(OBJ_BOOL, original->value, original->valueSize);
     }
     return NULL;
 }
