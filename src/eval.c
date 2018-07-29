@@ -448,10 +448,10 @@ void* visit_print(Stmt* stmt)
     char* bValue = NULL;
 
     switch (obj->type) {
-    case OBJ_STRING:
     case OBJ_NIL:
         printf("nil\n");
         break;
+    case OBJ_STRING:
     case OBJ_ERROR:
         printf("%s\n", (char*)obj->value);
         break;
@@ -651,6 +651,14 @@ void* visit_return(Stmt* stmt)
     return value;
 }
 
+static int obj_force_destroy(KeyValuePair* pair)
+{
+    Object* obj = (Object*)pair->value;
+    obj->shallow = 1;
+    obj_destroy(obj);
+    return 1;
+}
+
 static Object* instantiate(List* args, void* declaration, ExecutionEnvironment* env, FunctionType funType)
 {
     Class* type = (Class*)declaration;
@@ -666,7 +674,7 @@ static Object* instantiate(List* args, void* declaration, ExecutionEnvironment* 
     }
 
     instance->type = *type;
-    instance->fields = lldict();
+    instance->fields = lldict(obj_force_destroy);
     return instanceObj;
 }
 
@@ -703,7 +711,7 @@ void* visit_class(Stmt* stmt)
     ctor->call = instantiate;
     class->name = classStmt->name.lexeme;
     class->ctor = ctor;
-    class->methods = lldict();
+    class->methods = lldict(obj_force_destroy);
     class->super = super;
     for (n = classStmt->methods->head; n != NULL; n = n->next) {
         funStmt = (FunStmt*)((Stmt*)n->data)->realStmt;

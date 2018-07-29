@@ -3,24 +3,39 @@
 #include "mem.h"
 #include <string.h>
 
-static void keyvaluepair_delete(List* list, void* keyValuePairObj);
+static unsigned int hash_code(const char* key);
+static KeyValuePair* lldict_get_bucket(LLDictionary* dict, const char* key);
 
-LLDictionary* lldict()
+LLDictionary* lldict(DictAction deleteValue)
 {
     LLDictionary* dict = (LLDictionary*)alloc(sizeof(LLDictionary));
-    dict->elements = list();
+    memset(dict, 0, sizeof(LLDictionary));
+    dict->capacity = DICT_INITIAL_CAPACITY;
+    dict->count = 0;
+    dict->DeleteValue = deleteValue;
     return dict;
 }
 
 int lldict_add(LLDictionary* dict, const char* key, void* value)
 {
-    KeyValuePair* pair = NULL;
+    KeyValuePair *pair = NULL, *bucket = NULL;
+    int hash = 0;
     if (dict != NULL) {
         if (!lldict_contains(dict, key)) {
             pair = (KeyValuePair*)alloc(sizeof(KeyValuePair));
             pair->key = (char*)clone((void*)key, strlen(key) + 1);
             pair->value = value;
-            return list_push(dict->elements, pair) != NULL;
+            pair->next = NULL;
+            hash = hash_code(key);
+            bucket = dict->buckets[hash];
+            if (bucket == NULL) {
+                dict->buckets[hash] = pair;
+            } else {
+                pair->next = dict->buckets[hash];
+                dict->buckets[hash] = pair;
+            }
+            dict->count++;
+            return 1;
         }
     }
     return 0;
@@ -28,73 +43,81 @@ int lldict_add(LLDictionary* dict, const char* key, void* value)
 
 int lldict_remove(LLDictionary* dict, const char* key)
 {
-    Node* node = NULL;
-    Node* removed = NULL;
-    KeyValuePair* pair = NULL;
-    int keyLength = 0;
+    KeyValuePair *bucket = NULL, *prevBucket = NULL;
+    int hash = hash_code(key);
     if (dict == NULL) {
         return 0;
     }
-    keyLength = strlen(key) + 1;
-    for (node = dict->elements->head; node != NULL; node = node->next) {
-        pair = (KeyValuePair*)node->data;
-        if (memcmp(pair->key, key, keyLength) == 0) {
-            removed = node;
-            keyvaluepair_delete(NULL, pair);
-            break;
+
+    bucket = dict->buckets[hash];
+
+    if (bucket != NULL) {
+        for (bucket = dict->buckets[hash]; bucket != NULL; bucket = bucket->next) {
+            if (strcmp(key, bucket->key) == 0) {
+                dict->DeleteValue(bucket);
+                fr(bucket->key);
+                prevBucket->next = bucket->next;
+                fr(bucket);
+                return 1;
+            }
+            prevBucket = bucket;
         }
     }
-    if (removed == NULL) {
-        return 0;
-    }
-    return list_remove(dict->elements, removed);
+
+    return 0;
 }
 
-KeyValuePair* lldict_contains(LLDictionary* dict, const char* key)
+int lldict_contains(LLDictionary* dict, const char* key)
 {
-    Node* node = NULL;
-    if (dict != NULL) {
-        for (node = dict->elements->head; node != NULL; node = node->next) {
-            if (strcmp(((KeyValuePair*)node->data)->key, key) == 0) {
-                return (KeyValuePair*)node->data;
-            }
-        }
-    }
-    return NULL;
+    return lldict_get_bucket(dict, key) != NULL;
 }
 
 void lldict_destroy(LLDictionary* dict)
 {
+    KeyValuePair *bucket = NULL, *nextBucket = NULL;
+    int i = 0;
     if (dict != NULL) {
-        list_foreach(dict->elements, keyvaluepair_delete);
-        list_destroy(dict->elements);
+        for (i = 0; i < DICT_INITIAL_CAPACITY; i++) {
+            nextBucket = bucket = dict->buckets[i];
+            while (bucket != NULL) {
+                dict->DeleteValue(bucket);
+                fr(bucket->key);
+                nextBucket = bucket->next;
+                fr(bucket);
+                bucket = nextBucket;
+            }
+        }
         fr(dict);
     }
 }
 
-void* lldict_get(LLDictionary* dict, const char* key)
+static KeyValuePair* lldict_get_bucket(LLDictionary* dict, const char* key)
 {
-    Node* node = NULL;
-    KeyValuePair* pair = NULL;
-    int keyLength = 0;
-    if (dict == NULL || dict->elements->count == 0) {
+    KeyValuePair* bucket = NULL;
+    int hash = 0;
+    if (dict == NULL || dict->count == 0) {
         return NULL;
     }
-    keyLength = strlen(key) + 1;
-    for (node = dict->elements->head; node != NULL; node = node->next) {
-        pair = (KeyValuePair*)node->data;
-        if (memcmp(pair->key, key, keyLength) == 0) {
-            return pair->value;
+    hash = hash_code(key);
+    for (bucket = dict->buckets[hash]; bucket != NULL; bucket = bucket->next) {
+        if (strcmp(key, bucket->key) == 0) {
+            return bucket;
         }
     }
     return NULL;
+}
+
+void* lldict_get(LLDictionary* dict, const char* key)
+{
+    KeyValuePair* bucket = lldict_get_bucket(dict, key);
+    return bucket != NULL ? bucket->value : NULL;
 }
 
 int lldict_set(LLDictionary* dict, const char* key, void* value)
 {
     KeyValuePair* pair = NULL;
     if (dict != NULL) {
-        pair = lldict_contains(dict, key);
+        pair = lldict_get(dict, key);
         if (pair != NULL) {
             pair->value = value;
             return 1;
@@ -103,11 +126,7 @@ int lldict_set(LLDictionary* dict, const char* key, void* value)
     return 0;
 }
 
-static void keyvaluepair_delete(List* list, void* keyValuePairObj)
+static unsigned int hash_code(const char* key)
 {
-    KeyValuePair* keyValuePair = (KeyValuePair*)keyValuePairObj;
-    if (keyValuePair != NULL) {
-        fr(keyValuePair->key);
-        fr(keyValuePair);
-    }
+    return 0;
 }

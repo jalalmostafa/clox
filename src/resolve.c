@@ -71,10 +71,16 @@ static List* scopes = NULL;
 static FunctionType current_function_type = FUNCTION_TYPE_NONE;
 static ClassType current_class_type = CLASS_TYPE_NONE;
 
+static int scope_delete_value(KeyValuePair* pair) {
+    //fr(pair->value);
+    pair->value = NULL;
+    return 1;
+}
+
 static void scope_begin()
 {
     LLDictionary* scope = NULL;
-    scope = lldict();
+    scope = lldict(scope_delete_value);
     list_push(scopes, scope);
 }
 
@@ -172,7 +178,7 @@ static int resolve_local(Expr* expr, Token name)
     Node* node = NULL;
     for (node = scopes->last; i >= 0 && node != NULL; node = node->prev) {
         scope = (LLDictionary*)node->data;
-        if (lldict_contains(scope, name.lexeme) != NULL) {
+        if (lldict_contains(scope, name.lexeme)) {
             expr->order = scopes->count - i;
             return 1;
         }

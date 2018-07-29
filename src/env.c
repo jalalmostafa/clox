@@ -4,6 +4,8 @@
 #include <string.h>
 #include <time.h>
 
+static int env_clear_values(KeyValuePair* pair);
+
 static Object* clock_do(List* args, void* decl, ExecutionEnvironment* closure, FunctionType type)
 {
     time_t ts = time(NULL);
@@ -30,7 +32,7 @@ void env_init_global()
     ExecutionEnvironment* env = &GlobalExecutionEnvironment;
     if (env != NULL) {
         if (env->variables == NULL) {
-            env->variables = lldict();
+            env->variables = lldict(env_clear_values);
         }
     }
     env_add_variable(env, "clock", env_clock());
@@ -49,7 +51,7 @@ void env_init(ExecutionEnvironment* env)
 {
     if (env != NULL) {
         if (env->variables == NULL) {
-            env->variables = lldict();
+            env->variables = lldict(env_clear_values);
         }
     }
 }
@@ -114,19 +116,16 @@ int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, con
     return 1;
 }
 
-static void env_clear_values(List* them, void* pairObj)
+static int env_clear_values(KeyValuePair* pair)
 {
-    KeyValuePair* pair = (KeyValuePair*)pairObj;
     Object* obj = (Object*)pair->value;
     obj->shallow = 1;
     obj_destroy(obj);
+    return 1;
 }
 
 void env_destroy(ExecutionEnvironment* env)
 {
-    if (env->variables != NULL) {
-        list_foreach(env->variables->elements, env_clear_values);
-    }
     lldict_destroy(env->variables);
     env->variables = NULL;
 }
