@@ -128,5 +128,9 @@ int lldict_set(LLDictionary* dict, const char* key, void* value)
 
 static unsigned int hash_code(const char* key)
 {
-    return 0;
+    int hash = 0, i = 0, length = strlen(key);
+    for (i = 0; i < length; i++) {
+        hash += key[i] * 31 ^ (length - i + 1);
+    }
+    return hash % DICT_INITIAL_CAPACITY;
 }

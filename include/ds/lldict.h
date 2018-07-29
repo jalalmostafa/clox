@@ -3,7 +3,7 @@
 #include "list.h"
 #include <stdio.h>
 
-#define DICT_INITIAL_CAPACITY 11
+#define DICT_INITIAL_CAPACITY 16
 
 typedef struct key_value_pair_t {
     char* key;
