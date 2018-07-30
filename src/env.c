@@ -1,4 +1,4 @@
-#include "ds/lldict.h"
+#include "ds/dict.h"
 #include "eval.h"
 #include "mem.h"
 #include <string.h>
@@ -32,7 +32,7 @@ void env_init_global()
     ExecutionEnvironment* env = &GlobalExecutionEnvironment;
     if (env != NULL) {
         if (env->variables == NULL) {
-            env->variables = lldict(env_clear_values);
+            env->variables = dict(env_clear_values);
         }
     }
     env_add_variable(env, "clock", env_clock());
@@ -51,7 +51,7 @@ void env_init(ExecutionEnvironment* env)
 {
     if (env != NULL) {
         if (env->variables == NULL) {
-            env->variables = lldict(env_clear_values);
+            env->variables = dict(env_clear_values);
         }
     }
 }
@@ -61,7 +61,7 @@ int env_add_variable(ExecutionEnvironment* env, const char* variableName, Object
     env_init(env);
     if (env != NULL) {
         obj->shallow = 0;
-        return lldict_add(env->variables, variableName, obj);
+        return dict_add(env->variables, variableName, obj);
     }
     return 0;
 }
@@ -70,9 +70,9 @@ int env_set_variable_value(ExecutionEnvironment* env, const char* variableName, 
 {
     env_init(env);
     if (env != NULL) {
-        if (lldict_contains(env->variables, variableName)) {
+        if (dict_contains(env->variables, variableName)) {
             obj->shallow = 0;
-            return lldict_set(env->variables, variableName, obj);
+            return dict_set(env->variables, variableName, obj);
         }
     }
     return 0;
@@ -82,7 +82,7 @@ Object* env_get_variable_value(ExecutionEnvironment* env, const char* variableNa
 {
     Object* obj = NULL;
     if (env != NULL) {
-        obj = (Object*)lldict_get(env->variables, variableName);
+        obj = (Object*)dict_get(env->variables, variableName);
     }
     return obj;
 }
@@ -126,6 +126,6 @@ static int env_clear_values(KeyValuePair* pair)
 
 void env_destroy(ExecutionEnvironment* env)
 {
-    lldict_destroy(env->variables);
+    dict_destroy(env->variables);
     env->variables = NULL;
 }

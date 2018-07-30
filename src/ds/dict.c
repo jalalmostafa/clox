@@ -1,27 +1,27 @@
-#include "ds/lldict.h"
+#include "ds/dict.h"
 #include "ds/list.h"
 #include "mem.h"
 #include <string.h>
 
 static unsigned int hash_code(const char* key);
-static KeyValuePair* lldict_get_bucket(LLDictionary* dict, const char* key);
+static KeyValuePair* dict_get_bucket(Dictionary* dict, const char* key);
 
-LLDictionary* lldict(DictAction deleteValue)
+Dictionary* dict(DictAction deleteValue)
 {
-    LLDictionary* dict = (LLDictionary*)alloc(sizeof(LLDictionary));
-    memset(dict, 0, sizeof(LLDictionary));
+    Dictionary* dict = (Dictionary*)alloc(sizeof(Dictionary));
+    memset(dict, 0, sizeof(Dictionary));
     dict->capacity = DICT_INITIAL_CAPACITY;
     dict->count = 0;
     dict->DeleteValue = deleteValue;
     return dict;
 }
 
-int lldict_add(LLDictionary* dict, const char* key, void* value)
+int dict_add(Dictionary* dict, const char* key, void* value)
 {
     KeyValuePair *pair = NULL, *bucket = NULL;
     int hash = 0;
     if (dict != NULL) {
-        if (!lldict_contains(dict, key)) {
+        if (!dict_contains(dict, key)) {
             pair = (KeyValuePair*)alloc(sizeof(KeyValuePair));
             pair->key = (char*)clone((void*)key, strlen(key) + 1);
             pair->value = value;
@@ -41,7 +41,7 @@ int lldict_add(LLDictionary* dict, const char* key, void* value)
     return 0;
 }
 
-int lldict_remove(LLDictionary* dict, const char* key)
+int dict_remove(Dictionary* dict, const char* key)
 {
     KeyValuePair *bucket = NULL, *prevBucket = NULL;
     int hash = hash_code(key);
@@ -67,12 +67,12 @@ int lldict_remove(LLDictionary* dict, const char* key)
     return 0;
 }
 
-int lldict_contains(LLDictionary* dict, const char* key)
+int dict_contains(Dictionary* dict, const char* key)
 {
-    return lldict_get_bucket(dict, key) != NULL;
+    return dict_get_bucket(dict, key) != NULL;
 }
 
-void lldict_destroy(LLDictionary* dict)
+void dict_destroy(Dictionary* dict)
 {
     KeyValuePair *bucket = NULL, *nextBucket = NULL;
     int i = 0;
@@ -91,7 +91,7 @@ void lldict_destroy(LLDictionary* dict)
     }
 }
 
-static KeyValuePair* lldict_get_bucket(LLDictionary* dict, const char* key)
+static KeyValuePair* dict_get_bucket(Dictionary* dict, const char* key)
 {
     KeyValuePair* bucket = NULL;
     int hash = 0;
@@ -107,17 +107,17 @@ static KeyValuePair* lldict_get_bucket(LLDictionary* dict, const char* key)
     return NULL;
 }
 
-void* lldict_get(LLDictionary* dict, const char* key)
+void* dict_get(Dictionary* dict, const char* key)
 {
-    KeyValuePair* bucket = lldict_get_bucket(dict, key);
+    KeyValuePair* bucket = dict_get_bucket(dict, key);
     return bucket != NULL ? bucket->value : NULL;
 }
 
-int lldict_set(LLDictionary* dict, const char* key, void* value)
+int dict_set(Dictionary* dict, const char* key, void* value)
 {
     KeyValuePair* pair = NULL;
     if (dict != NULL) {
-        pair = lldict_get(dict, key);
+        pair = dict_get(dict, key);
         if (pair != NULL) {
             pair->value = value;
             return 1;

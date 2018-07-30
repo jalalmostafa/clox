@@ -1,5 +1,5 @@
 #include "eval.h"
-#include "ds/lldict.h"
+#include "ds/dict.h"
 #include "except.h"
 #include "global.h"
 #include "mem.h"
@@ -664,7 +664,7 @@ static Object* instantiate(List* args, void* declaration, ExecutionEnvironment* 
     Class* type = (Class*)declaration;
     ClassInstance* instance = (ClassInstance*)alloc(sizeof(ClassInstance));
     Object* instanceObj = obj_new(OBJ_CLASS_INSTANCE, instance, sizeof(ClassInstance));
-    Object* customCtorMethod = lldict_get(type->methods, "init");
+    Object* customCtorMethod = dict_get(type->methods, "init");
     Callable* customCtor = NULL;
 
     if (customCtor != NULL) {
@@ -674,7 +674,7 @@ static Object* instantiate(List* args, void* declaration, ExecutionEnvironment* 
     }
 
     instance->type = *type;
-    instance->fields = lldict(obj_force_destroy);
+    instance->fields = dict(obj_force_destroy);
     return instanceObj;
 }
 
@@ -711,15 +711,15 @@ void* visit_class(Stmt* stmt)
     ctor->call = instantiate;
     class->name = classStmt->name.lexeme;
     class->ctor = ctor;
-    class->methods = lldict(obj_force_destroy);
+    class->methods = dict(obj_force_destroy);
     class->super = super;
     for (n = classStmt->methods->head; n != NULL; n = n->next) {
         funStmt = (FunStmt*)((Stmt*)n->data)->realStmt;
         callable = build_function(funStmt, CurrentEnv, FUNCTION_TYPE_METHOD);
-        lldict_add(class->methods, funStmt->name.lexeme, callable);
+        dict_add(class->methods, funStmt->name.lexeme, callable);
     }
 
-    customCtor = lldict_get(class->methods, "init");
+    customCtor = dict_get(class->methods, "init");
     if (customCtor != NULL) {
         ctor->arity = customCtor->arity;
         customCtor->type = FUNCTION_TYPE_CTOR;
@@ -773,7 +773,7 @@ void obj_destroy(Object* obj)
             break;
         case OBJ_CLASS_INSTANCE:
             instance = (ClassInstance*)obj->value;
-            lldict_destroy(instance->fields);
+            dict_destroy(instance->fields);
             fr(instance);
             break;
         default:
@@ -844,7 +844,7 @@ static Object* find_method(Class type, Object* instanceObj, char* name)
     Callable* method = NULL;
     Class* superType = NULL;
 
-    member = lldict_get(type.methods, name);
+    member = dict_get(type.methods, name);
     if (member != NULL) {
         method = (Callable*)member->value;
         callable_bind(instanceObj, method);
@@ -861,8 +861,8 @@ static Object* instance_get(Object* instanceObj, Token name)
     Object* member = NULL;
     ClassInstance* instance = (ClassInstance*)instanceObj->value;
 
-    if (lldict_contains(instance->fields, name.lexeme)) {
-        return lldict_get(instance->fields, name.lexeme);
+    if (dict_contains(instance->fields, name.lexeme)) {
+        return dict_get(instance->fields, name.lexeme);
     }
 
     member = find_method(instance->type, instanceObj, name.lexeme);
@@ -875,9 +875,9 @@ static Object* instance_get(Object* instanceObj, Token name)
 
 static void instance_set(ClassInstance* instance, Token name, Object* value)
 {
-    if (lldict_contains(instance->fields, name.lexeme)) {
-        lldict_set(instance->fields, name.lexeme, value);
+    if (dict_contains(instance->fields, name.lexeme)) {
+        dict_set(instance->fields, name.lexeme, value);
     } else {
-        lldict_add(instance->fields, name.lexeme, value);
+        dict_add(instance->fields, name.lexeme, value);
     }
 }
