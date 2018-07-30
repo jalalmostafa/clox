@@ -1,8 +1,10 @@
-#include "ds/lldict.h"
+#include "ds/dict.h"
 #include "eval.h"
 #include "mem.h"
 #include <string.h>
 #include <time.h>
+
+static int env_clear_values(KeyValuePair* pair);
 
 static Object* clock_do(List* args, void* decl, ExecutionEnvironment* closure, FunctionType type)
 {
@@ -30,7 +32,7 @@ void env_init_global()
     ExecutionEnvironment* env = &GlobalExecutionEnvironment;
     if (env != NULL) {
         if (env->variables == NULL) {
-            env->variables = lldict();
+            env->variables = dict(env_clear_values);
         }
     }
     env_add_variable(env, "clock", env_clock());
@@ -49,7 +51,7 @@ void env_init(ExecutionEnvironment* env)
 {
     if (env != NULL) {
         if (env->variables == NULL) {
-            env->variables = lldict();
+            env->variables = dict(env_clear_values);
         }
     }
 }
@@ -59,7 +61,7 @@ int env_add_variable(ExecutionEnvironment* env, const char* variableName, Object
     env_init(env);
     if (env != NULL) {
         obj->shallow = 0;
-        return lldict_add(env->variables, variableName, obj);
+        return dict_add(env->variables, variableName, obj);
     }
     return 0;
 }
@@ -68,9 +70,9 @@ int env_set_variable_value(ExecutionEnvironment* env, const char* variableName, 
 {
     env_init(env);
     if (env != NULL) {
-        if (lldict_contains(env->variables, variableName)) {
+        if (dict_contains(env->variables, variableName)) {
             obj->shallow = 0;
-            return lldict_set(env->variables, variableName, obj);
+            return dict_set(env->variables, variableName, obj);
         }
     }
     return 0;
@@ -80,7 +82,7 @@ Object* env_get_variable_value(ExecutionEnvironment* env, const char* variableNa
 {
     Object* obj = NULL;
     if (env != NULL) {
-        obj = (Object*)lldict_get(env->variables, variableName);
+        obj = (Object*)dict_get(env->variables, variableName);
     }
     return obj;
 }
@@ -114,19 +116,16 @@ int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, con
     return 1;
 }
 
-static void env_clear_values(List* them, void* pairObj)
+static int env_clear_values(KeyValuePair* pair)
 {
-    KeyValuePair* pair = (KeyValuePair*)pairObj;
     Object* obj = (Object*)pair->value;
     obj->shallow = 1;
     obj_destroy(obj);
+    return 1;
 }
 
 void env_destroy(ExecutionEnvironment* env)
 {
-    if (env->variables != NULL) {
-        list_foreach(env->variables->elements, env_clear_values);
-    }
-    lldict_destroy(env->variables);
+    dict_destroy(env->variables);
     env->variables = NULL;
 }

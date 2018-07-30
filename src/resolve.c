@@ -1,6 +1,6 @@
 #include "resolve.h"
 #include "ds/list.h"
-#include "ds/lldict.h"
+#include "ds/dict.h"
 #include "except.h"
 #include "mem.h"
 #include "visitor.h"
@@ -71,36 +71,42 @@ static List* scopes = NULL;
 static FunctionType current_function_type = FUNCTION_TYPE_NONE;
 static ClassType current_class_type = CLASS_TYPE_NONE;
 
+static int scope_delete_value(KeyValuePair* pair) {
+    //fr(pair->value);
+    pair->value = NULL;
+    return 1;
+}
+
 static void scope_begin()
 {
-    LLDictionary* scope = NULL;
-    scope = lldict();
+    Dictionary* scope = NULL;
+    scope = dict(scope_delete_value);
     list_push(scopes, scope);
 }
 
 static void scope_end()
 {
-    LLDictionary* dict = (LLDictionary*)list_pop(scopes);
-    lldict_destroy(dict);
+    Dictionary* dict = (Dictionary*)list_pop(scopes);
+    dict_destroy(dict);
 }
 
 static int scope_add(char* name, int value)
 {
-    LLDictionary* last = NULL;
+    Dictionary* last = NULL;
     int* realValue = NULL;
     if (scopes->last == NULL) {
         return 0;
     }
-    last = (LLDictionary*)scopes->last->data;
+    last = (Dictionary*)scopes->last->data;
     realValue = (int*)alloc(sizeof(int));
     *realValue = value;
-    lldict_add(last, name, realValue);
+    dict_add(last, name, realValue);
     return 1;
 }
 
 static int declare(Token name)
 {
-    LLDictionary* scope = NULL;
+    Dictionary* scope = NULL;
     Node* node = NULL;
     int* value = NULL;
     if (scopes->count == 0) {
@@ -108,21 +114,21 @@ static int declare(Token name)
     }
 
     node = (Node*)scopes->last;
-    scope = (LLDictionary*)node->data;
-    if (lldict_contains(scope, name.lexeme)) {
+    scope = (Dictionary*)node->data;
+    if (dict_contains(scope, name.lexeme)) {
         parse_error(&name, "Variable with this name already declared in this scope.");
         return 0;
     }
 
     value = (int*)alloc(sizeof(int));
     *value = 0;
-    lldict_add(scope, name.lexeme, (void*)value);
+    dict_add(scope, name.lexeme, (void*)value);
     return 1;
 }
 
 static int define(Token name)
 {
-    LLDictionary* scope = NULL;
+    Dictionary* scope = NULL;
     int* value = NULL;
     Node* node = NULL;
     if (scopes->count == 0) {
@@ -130,10 +136,10 @@ static int define(Token name)
     }
 
     node = (Node*)scopes->last;
-    scope = (LLDictionary*)node->data;
-    value = (int*)lldict_get(scope, name.lexeme);
+    scope = (Dictionary*)node->data;
+    value = (int*)dict_get(scope, name.lexeme);
     *value = 1;
-    lldict_set(scope, name.lexeme, value);
+    dict_set(scope, name.lexeme, value);
     return 1;
 }
 
@@ -168,11 +174,11 @@ static int resolve_expr(Expr* expr)
 static int resolve_local(Expr* expr, Token name)
 {
     int i = scopes->count;
-    LLDictionary* scope = NULL;
+    Dictionary* scope = NULL;
     Node* node = NULL;
     for (node = scopes->last; i >= 0 && node != NULL; node = node->prev) {
-        scope = (LLDictionary*)node->data;
-        if (lldict_contains(scope, name.lexeme) != NULL) {
+        scope = (Dictionary*)node->data;
+        if (dict_contains(scope, name.lexeme)) {
             expr->order = scopes->count - i;
             return 1;
         }
@@ -211,7 +217,7 @@ static void* visit_var_expr_resolver(Expr* expr)
     int* initialized = NULL;
     Node* last = (Node*)scopes->last;
     if (scopes->count != 0 && last != NULL) {
-        initialized = lldict_get((LLDictionary*)last->data, varExpr->variableName.lexeme);
+        initialized = dict_get((Dictionary*)last->data, varExpr->variableName.lexeme);
         if (initialized != NULL && *initialized == 0) {
             parse_error(&varExpr->variableName, "Cannot Read Local variable in its own initializer: %s\n", varExpr->variableName.lexeme);
             return NULL;

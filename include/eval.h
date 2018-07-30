@@ -1,6 +1,6 @@
 #ifndef EVAL_H
 #define EVAL_H
-#include "ds/lldict.h"
+#include "ds/dict.h"
 #include "resolve.h"
 
 typedef enum obj_type_t {
@@ -24,7 +24,7 @@ typedef struct object_t {
 } Object;
 
 typedef struct env_t {
-    LLDictionary* variables;
+    Dictionary* variables;
     struct env_t* enclosing;
 } ExecutionEnvironment;
 
@@ -41,13 +41,13 @@ typedef struct callable_t {
 typedef struct class_t {
     char* name;
     Callable* ctor;
-    LLDictionary* methods;
+    Dictionary* methods;
     Object* super;
 } Class;
 
 typedef struct class_instance_t {
     Class type;
-    LLDictionary* fields;
+    Dictionary* fields;
 } ClassInstance;
 
 void env_init(ExecutionEnvironment* env);
@@ -61,6 +61,7 @@ int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, con
 Object* env_get_variable_value_at(ExecutionEnvironment* env, unsigned int order, const char* variableName);
 
 void obj_destroy(Object* obj);
+static int obj_force_destroy(KeyValuePair* pair);
 Object* obj_new(ObjectType type, void* value, int valueSize);
 char obj_likely(Object* obj);
 char obj_unlikely(Object* expr);

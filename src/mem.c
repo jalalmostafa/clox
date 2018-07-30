@@ -13,9 +13,7 @@ void* alloc(size_t size)
 
 void fr(void* mem)
 {
-    if (mem != NULL) {
-        free(mem);
-    }
+    free(mem);
 }
 
 void* clone(void* src, size_t size)
