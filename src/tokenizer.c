@@ -122,15 +122,15 @@ static char* read_other(const char* code, int codeLength, int* current)
     return literal;
 }
 
-Tokenization* toknzr(const char* code)
+Tokenization toknzr(const char* code)
 {
     char* literal = NULL;
     Token* tokn = NULL;
     TokenType type = ENDOFFILE;
     int length = strlen(code), current = 0, line = 1;
-    Tokenization* toknz = (Tokenization*)alloc(sizeof(Tokenization));
-    toknz->values = list();
-    toknz->lines = 0;
+    Tokenization toknz;
+    toknz.values = list();
+    toknz.lines = 0;
     while (!IS_AT_END(current, length)) {
         char c = code[current];
         switch (c) {
@@ -253,12 +253,12 @@ Tokenization* toknzr(const char* code)
         literal = NULL;
         current++;
         if (tokn != NULL) {
-            list_push(toknz->values, tokn);
+            list_push(toknz.values, tokn);
             tokn = NULL;
         }
     }
-    toknz->lines = line;
-    list_push(toknz->values, token_simple(ENDOFFILE, line, current, (char*)"EOF"));
+    toknz.lines = line;
+    list_push(toknz.values, token_simple(ENDOFFILE, line, current, (char*)"EOF"));
     return toknz;
 }
 
@@ -268,12 +268,8 @@ static void tokens_foreach_token(List* tokens, void* tokenObj)
     token_destroy(tokn);
 }
 
-void toknzr_destroy(Tokenization* toknz)
+void toknzr_destroy(Tokenization toknz)
 {
-    if (toknz == NULL) {
-        return;
-    }
-    list_foreach(toknz->values, tokens_foreach_token);
-    list_destroy(toknz->values);
-    fr(toknz);
+    list_foreach(toknz.values, tokens_foreach_token);
+    list_destroy(toknz.values);
 }

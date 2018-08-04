@@ -41,6 +41,7 @@ static Object* find_method(Class type, Object* instanceObj, char* name);
 static void instance_set(ClassInstance* instance, Token name, Object* value);
 static Object* lookup_var(int order, char* name);
 static void callable_bind(Object* instanceObj, Callable* method);
+static int obj_force_destroy(KeyValuePair* pair);
 
 ExpressionVisitor EvaluateExpressionVisitor = {
     visit_binary,
@@ -96,9 +97,9 @@ static Object* eval_expr(Expr* expr)
     return (Object*)accept_expr(EvaluateExpressionVisitor, expr);
 }
 
-static Object* runtime_error(const char* format, Object** obj, int line, ...)
+Object* runtime_error(const char* format, Object** obj, int line, ...)
 {
-    const char* runtimeError = "Runtime Error (at Line %d): ";
+    const char* runtimeError = line != -1 ? "Runtime Error (at Line %d): " : "Runtime Error: ";
     int len = 0;
     char buffer[LINEBUFSIZE];
     Object* temp = NULL;
@@ -118,7 +119,7 @@ static Object* runtime_error(const char* format, Object** obj, int line, ...)
     }
     (*obj)->type = OBJ_ERROR;
     (*obj)->value = clone(buffer, len);
-    (*obj)->valueSize = 0;
+    (*obj)->valueSize = len;
     (*obj)->shallow = 1;
     return *obj;
 }
@@ -828,6 +829,15 @@ char obj_unlikely(Object* obj)
 void eval(Stmt* stmt)
 {
     accept(EvaluateStmtVisitor, stmt);
+}
+
+Object* eval_literal(ParsingContext ctx)
+{
+    Object* obj = NULL;
+    if (ctx.expr != NULL) {
+        return (Object*)visit_literal(ctx.expr);
+    }
+    return runtime_error("Invalid Input", &obj, -1);
 }
 
 static void callable_bind(Object* instanceObj, Callable* method)

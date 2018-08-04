@@ -156,9 +156,11 @@ typedef struct stmt_class_t {
 
 typedef struct parser_t {
     List* stmts;
+    Expr* expr;
 } ParsingContext;
 
-ParsingContext parse(Tokenization* toknz);
+ParsingContext parse(Tokenization toknz);
+ParsingContext parse_literal(Tokenization toknz);
 void parser_destroy(ParsingContext* ctx);
 
 #define END_OF_TOKENS(x) ((x) == ENDOFFILE)
