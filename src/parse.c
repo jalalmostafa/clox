@@ -474,6 +474,14 @@ static Stmt* print_statement(Node** node)
     return new_terminated_statement(node, STMT_PRINT, stmt);
 }
 
+static Stmt* unterminated_expression_statement(Node** node)
+{
+    Expr* expr = expression(node);
+    ExprStmt* stmt = (ExprStmt*)alloc(sizeof(ExprStmt));
+    stmt->expr = expr;
+    return new_statement(STMT_EXPR, stmt);
+}
+
 static Stmt* expression_statement(Node** node)
 {
     Expr* expr = expression(node);
@@ -907,25 +915,26 @@ static void stmts_destroy(List* stmts)
 
 void parser_destroy(ParsingContext* ctx)
 {
-    if (ctx == NULL) {
-        return;
-    }
     if (ctx->stmts != NULL) {
         stmts_destroy(ctx->stmts);
         ctx->stmts = NULL;
     }
+
+    if (ctx->expr != NULL) {
+        expr_destroy(ctx->expr);
+        ctx->expr = NULL;
+    }
 }
 
-ParsingContext parse(Tokenization* toknz)
+ParsingContext parse(Tokenization toknz)
 {
-    ParsingContext ctx;
+    ParsingContext ctx = { NULL, NULL };
     List* stmts = NULL;
-    List* tokens = toknz->values;
+    List* tokens = toknz.values;
     int nbTokens = 0;
     Node* head = NULL;
     Stmt* stmt = NULL;
 
-    memset(&ctx, 0, sizeof(ParsingContext));
     if (tokens != NULL) {
         stmts = list();
         nbTokens = tokens->count;
@@ -943,5 +952,35 @@ ParsingContext parse(Tokenization* toknz)
         }
     }
     ctx.stmts = stmts;
+    return ctx;
+}
+
+ParsingContext parse_literal(Tokenization toknz)
+{
+    ParsingContext ctx = { NULL, NULL };
+    List* tokens = toknz.values;
+    Node* head = NULL;
+    Expr* expr = NULL;
+
+    if (tokens != NULL) {
+        head = tokens->head;
+
+        if (!END_OF_TOKENS(((Token*)head->data)->type)) {
+            expr = primary(&head);
+            if (expr->type != EXPR_LITERAL) {
+                expr_destroy(expr);
+                expr = NULL;
+            }
+        }
+
+        if (!END_OF_TOKENS(((Token*)head->data)->type)) {
+            if (expr != NULL) {
+                expr_destroy(expr);
+                expr = NULL;
+            }
+        }
+    }
+    ctx.stmts = NULL;
+    ctx.expr = expr;
     return ctx;
 }

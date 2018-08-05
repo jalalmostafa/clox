@@ -61,14 +61,15 @@ int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, con
 Object* env_get_variable_value_at(ExecutionEnvironment* env, unsigned int order, const char* variableName);
 
 void obj_destroy(Object* obj);
-static int obj_force_destroy(KeyValuePair* pair);
 Object* obj_new(ObjectType type, void* value, int valueSize);
 char obj_likely(Object* obj);
 char obj_unlikely(Object* expr);
+int obj_force_destroy(KeyValuePair* pair);
 
 extern ExecutionEnvironment GlobalExecutionEnvironment;
 
 void eval(Stmt* stmt);
+Object* eval_literal(ParsingContext ctx);
 
 #define OPERAND_NUMBER "Syntax Error: Operands must be numbers at line: %d"
 #define OPERAND_SAMETYPE "Syntax Error: Operands must be two numbers or two strings at line: %d"
