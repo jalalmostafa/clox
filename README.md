@@ -25,7 +25,7 @@ cmake ..
 cmake --build .
 ```
 
-In order to execute clox, check `/bin` folder in project directory for binaries.
+In order to execute clox, check `bin` folder in project directory for binaries.
 
 ## Download
 
