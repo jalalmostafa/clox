@@ -651,7 +651,7 @@ void* visit_return(Stmt* stmt)
     return value;
 }
 
-static int obj_force_destroy(KeyValuePair* pair)
+int obj_force_destroy(KeyValuePair* pair)
 {
     Object* obj = (Object*)pair->value;
     obj->shallow = 1;
