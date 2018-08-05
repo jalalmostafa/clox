@@ -139,10 +139,7 @@ int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, con
 
 static int env_clear_values(KeyValuePair* pair)
 {
-    Object* obj = (Object*)pair->value;
-    obj->shallow = 1;
-    obj_destroy(obj);
-    return 1;
+    return obj_force_destroy(pair);
 }
 
 void env_destroy(ExecutionEnvironment* env)

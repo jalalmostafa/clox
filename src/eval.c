@@ -41,7 +41,6 @@ static Object* find_method(Class type, Object* instanceObj, char* name);
 static void instance_set(ClassInstance* instance, Token name, Object* value);
 static Object* lookup_var(int order, char* name);
 static void callable_bind(Object* instanceObj, Callable* method);
-static int obj_force_destroy(KeyValuePair* pair);
 
 ExpressionVisitor EvaluateExpressionVisitor = {
     visit_binary,

@@ -64,6 +64,7 @@ void obj_destroy(Object* obj);
 Object* obj_new(ObjectType type, void* value, int valueSize);
 char obj_likely(Object* obj);
 char obj_unlikely(Object* expr);
+int obj_force_destroy(KeyValuePair* pair);
 
 extern ExecutionEnvironment GlobalExecutionEnvironment;
 
