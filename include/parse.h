@@ -160,7 +160,6 @@ typedef struct parser_t {
 } ParsingContext;
 
 ParsingContext parse(Tokenization toknz);
-ParsingContext parse_literal(Tokenization toknz);
 void parser_destroy(ParsingContext* ctx);
 
 #define END_OF_TOKENS(x) ((x) == ENDOFFILE)

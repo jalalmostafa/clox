@@ -69,7 +69,8 @@ int obj_force_destroy(KeyValuePair* pair);
 extern ExecutionEnvironment GlobalExecutionEnvironment;
 
 void eval(Stmt* stmt);
-Object* eval_literal(ParsingContext ctx);
+
+Object* runtime_error(const char* format, Object** obj, int line, ...);
 
 #define OPERAND_NUMBER "Syntax Error: Operands must be numbers at line: %d"
 #define OPERAND_SAMETYPE "Syntax Error: Operands must be two numbers or two strings at line: %d"

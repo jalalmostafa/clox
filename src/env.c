@@ -33,12 +33,48 @@ static Object* env_clock()
     return obj_new(OBJ_CALLABLE, callableClock, sizeof(Callable));
 }
 
+static int is_number(char* str)
+{
+    while (*str != '\0') {
+        if (*str < '0' || *str > '9') {
+            return 0;
+        }
+        str++;
+    }
+    return 1;
+}
+
 static Object* read_do(List* args, void* decl, ExecutionEnvironment* closure, FunctionType type)
 {
-    char literalsBuffer[LINEBUFSIZE];
-    memset(literalsBuffer, 0, LINEBUFSIZE);
-    fgets(literalsBuffer, LINEBUFSIZE, stdin);
-    return interp_literal(literalsBuffer);
+    char* boolOrString = NULL;
+    double* number = NULL;
+    int length = 0;
+    char input[LINEBUFSIZE];
+    memset(input, 0, LINEBUFSIZE);
+    fgets(input, LINEBUFSIZE, stdin);
+    length = strlen(input);
+    input[length - 1] = 0;
+    length--;
+    if (strcmp(input, NIL_KEY) == 0) {
+        return obj_new(OBJ_NIL, NULL, 0);
+    } else if (strcmp(input, TRUE_KEY) == 0) {
+        boolOrString = (char*)alloc(sizeof(char));
+        *boolOrString = 1;
+        return obj_new(OBJ_BOOL, boolOrString, sizeof(char));
+    } else if (strcmp(input, FALSE_KEY) == 0) {
+        boolOrString = (char*)alloc(sizeof(char));
+        *boolOrString = 0;
+        return obj_new(OBJ_BOOL, boolOrString, sizeof(char));
+    } else if (is_number(input)) {
+        number = (double*)alloc(sizeof(double));
+        *number = atof(input);
+        return obj_new(OBJ_NUMBER, number, sizeof(double));
+    } else {
+        boolOrString = (char*)alloc(length + 1);
+        memcpy(boolOrString, input, length + 1);
+        return obj_new(OBJ_STRING, boolOrString, length + 1);
+    }
+    return runtime_error("Invalid Input", NULL, -1);
 }
 
 static Object* env_read()
