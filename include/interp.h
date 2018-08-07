@@ -3,6 +3,4 @@
 
 void interp(const char* code);
 
-Object* interp_literal(const char* code);
-
 #endif
