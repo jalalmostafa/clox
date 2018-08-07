@@ -954,33 +954,3 @@ ParsingContext parse(Tokenization toknz)
     ctx.stmts = stmts;
     return ctx;
 }
-
-ParsingContext parse_literal(Tokenization toknz)
-{
-    ParsingContext ctx = { NULL, NULL };
-    List* tokens = toknz.values;
-    Node* head = NULL;
-    Expr* expr = NULL;
-
-    if (tokens != NULL) {
-        head = tokens->head;
-
-        if (!END_OF_TOKENS(((Token*)head->data)->type)) {
-            expr = primary(&head);
-            if (expr->type != EXPR_LITERAL) {
-                expr_destroy(expr);
-                expr = NULL;
-            }
-        }
-
-        if (!END_OF_TOKENS(((Token*)head->data)->type)) {
-            if (expr != NULL) {
-                expr_destroy(expr);
-                expr = NULL;
-            }
-        }
-    }
-    ctx.stmts = NULL;
-    ctx.expr = expr;
-    return ctx;
-}

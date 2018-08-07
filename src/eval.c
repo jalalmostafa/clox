@@ -830,15 +830,6 @@ void eval(Stmt* stmt)
     accept(EvaluateStmtVisitor, stmt);
 }
 
-Object* eval_literal(ParsingContext ctx)
-{
-    Object* obj = NULL;
-    if (ctx.expr != NULL) {
-        return (Object*)visit_literal(ctx.expr);
-    }
-    return runtime_error("Invalid Input", &obj, -1);
-}
-
 static void callable_bind(Object* instanceObj, Callable* method)
 {
     ExecutionEnvironment* classEnv = env_new();

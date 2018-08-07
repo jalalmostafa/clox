@@ -22,17 +22,3 @@ void interp(const char* code)
     parser_destroy(&ctx);
     toknzr_destroy(toknz);
 }
-
-Object* interp_literal(const char* code)
-{
-    Object* obj = NULL;
-    Tokenization toknz = toknzr(code);
-    ParsingContext ctx = parse_literal(toknz);
-    obj = eval_literal(ctx);
-    if (obj->type != OBJ_ERROR) {
-        obj->value = clone(obj->value, obj->valueSize);
-    }
-    parser_destroy(&ctx);
-    toknzr_destroy(toknz);
-    return obj;
-}
