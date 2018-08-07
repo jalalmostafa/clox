@@ -1,23 +1,10 @@
 #include "ds/dict.h"
 #include "eval.h"
-#include "global.h"
-#include "interp.h"
 #include "mem.h"
 #include <string.h>
 #include <time.h>
 
 static int env_clear_values(KeyValuePair* pair);
-
-static Callable* callable_new(int arity, CallFunc func)
-{
-    Callable* callable = (Callable*)alloc(sizeof(Callable));
-    callable->arity = arity;
-    callable->declaration = NULL;
-    callable->call = func;
-    callable->type = FUNCTION_TYPE_FUNCTION;
-    callable->closure = NULL;
-    return callable;
-}
 
 static Object* clock_do(List* args, void* decl, ExecutionEnvironment* closure, FunctionType type)
 {
@@ -29,22 +16,15 @@ static Object* clock_do(List* args, void* decl, ExecutionEnvironment* closure, F
 
 static Object* env_clock()
 {
-    Callable* callableClock = callable_new(0, clock_do);
-    return obj_new(OBJ_CALLABLE, callableClock, sizeof(Callable));
-}
-
-static Object* read_do(List* args, void* decl, ExecutionEnvironment* closure, FunctionType type)
-{
-    char literalsBuffer[LINEBUFSIZE];
-    memset(literalsBuffer, 0, LINEBUFSIZE);
-    fgets(literalsBuffer, LINEBUFSIZE, stdin);
-    return interp_literal(literalsBuffer);
-}
-
-static Object* env_read()
-{
-    Callable* callableRead = callable_new(0, read_do);
-    return obj_new(OBJ_CALLABLE, callableRead, sizeof(Callable));
+    Object* clock = NULL;
+    Callable* callableClock = (Callable*)alloc(sizeof(Callable));
+    memset(callableClock, 0, sizeof(Callable));
+    callableClock->arity = 0;
+    callableClock->declaration = NULL;
+    callableClock->call = clock_do;
+    callableClock->type = FUNCTION_TYPE_FUNCTION;
+    clock = obj_new(OBJ_CALLABLE, callableClock, sizeof(Callable));
+    return clock;
 }
 
 void env_init_global()
@@ -56,7 +36,6 @@ void env_init_global()
         }
     }
     env_add_variable(env, "clock", env_clock());
-    env_add_variable(env, "read", env_read());
 }
 
 ExecutionEnvironment* env_new()
@@ -139,7 +118,10 @@ int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, con
 
 static int env_clear_values(KeyValuePair* pair)
 {
-    return obj_force_destroy(pair);
+    Object* obj = (Object*)pair->value;
+    obj->shallow = 1;
+    obj_destroy(obj);
+    return 1;
 }
 
 void env_destroy(ExecutionEnvironment* env)

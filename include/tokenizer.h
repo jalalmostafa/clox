@@ -61,8 +61,8 @@ typedef struct token {
     int line;
 } Token;
 
-Tokenization toknzr(const char* code);
-void toknzr_destroy(Tokenization toknz);
+Tokenization* toknzr(const char* code);
+void toknzr_destroy(Tokenization* toknz);
 
 #define IS_AT_END(x, codeLength) ((x) >= (codeLength))
 #define IS_ALPHA_NUMERIC(x) (isalpha((x)) || isdigit((x) || (x) == '_'))

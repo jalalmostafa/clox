@@ -96,9 +96,9 @@ static Object* eval_expr(Expr* expr)
     return (Object*)accept_expr(EvaluateExpressionVisitor, expr);
 }
 
-Object* runtime_error(const char* format, Object** obj, int line, ...)
+static Object* runtime_error(const char* format, Object** obj, int line, ...)
 {
-    const char* runtimeError = line != -1 ? "Runtime Error (at Line %d): " : "Runtime Error: ";
+    const char* runtimeError = "Runtime Error (at Line %d): ";
     int len = 0;
     char buffer[LINEBUFSIZE];
     Object* temp = NULL;
@@ -118,7 +118,7 @@ Object* runtime_error(const char* format, Object** obj, int line, ...)
     }
     (*obj)->type = OBJ_ERROR;
     (*obj)->value = clone(buffer, len);
-    (*obj)->valueSize = len;
+    (*obj)->valueSize = 0;
     (*obj)->shallow = 1;
     return *obj;
 }
@@ -651,7 +651,7 @@ void* visit_return(Stmt* stmt)
     return value;
 }
 
-int obj_force_destroy(KeyValuePair* pair)
+static int obj_force_destroy(KeyValuePair* pair)
 {
     Object* obj = (Object*)pair->value;
     obj->shallow = 1;
@@ -828,15 +828,6 @@ char obj_unlikely(Object* obj)
 void eval(Stmt* stmt)
 {
     accept(EvaluateStmtVisitor, stmt);
-}
-
-Object* eval_literal(ParsingContext ctx)
-{
-    Object* obj = NULL;
-    if (ctx.expr != NULL) {
-        return (Object*)visit_literal(ctx.expr);
-    }
-    return runtime_error("Invalid Input", &obj, -1);
 }
 
 static void callable_bind(Object* instanceObj, Callable* method)
