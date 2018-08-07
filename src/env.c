@@ -69,12 +69,11 @@ static Object* read_do(List* args, void* decl, ExecutionEnvironment* closure, Fu
         number = (double*)alloc(sizeof(double));
         *number = atof(input);
         return obj_new(OBJ_NUMBER, number, sizeof(double));
-    } else {
-        boolOrString = (char*)alloc(length + 1);
-        memcpy(boolOrString, input, length + 1);
-        return obj_new(OBJ_STRING, boolOrString, length + 1);
     }
-    return runtime_error("Invalid Input", NULL, -1);
+
+    boolOrString = (char*)alloc(length + 1);
+    memcpy(boolOrString, input, length + 1);
+    return obj_new(OBJ_STRING, boolOrString, length + 1);
 }
 
 static Object* env_read()
