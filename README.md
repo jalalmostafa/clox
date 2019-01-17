@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/jalalmostafa/clox.svg?branch=master)](https://travis-ci.org/jalalmostafa/clox)
 [![Build status](https://ci.appveyor.com/api/projects/status/xhuvod8r2je1juwd/branch/master?svg=true)](https://ci.appveyor.com/project/JalalMostafa/clox/branch/master)
 
-clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) treewalk interpreter in ANSI C.
+clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter in ANSI C.
 
 ## Coding Conventions
 
@@ -25,7 +25,7 @@ cmake ..
 cmake --build .
 ```
 
-In order to execute clox, check `bin` folder in project directory for binaries.
+In order to execute clox, check `bin` folder in project directory for binaries. Execute with `--tree-walk` in the arguments.
 
 ## Download
 

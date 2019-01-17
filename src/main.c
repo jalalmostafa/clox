@@ -8,11 +8,68 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct argvalues {
+    int treewalk;
+    int repl;
+    char* filename;
+    int help;
+    int error;
+} ArgValues;
+
+typedef struct runnable_mode {
+    void (*codeRunner)(const char* code);
+} RunnableMode;
+
 void usage(char* name);
 void header(char* name);
 char* read_line(const char* prompt);
 char* read_file(char* filepath);
-void run(const char* code);
+
+void run_treewalk_chunk(const char* code);
+void run_treewalk_file(const char* code);
+void run_vm_chunk(const char* code);
+void run_vm_file(const char* code);
+
+ArgValues argparse(int argc, const char* argv[])
+{
+    ArgValues values;
+    int i = 0;
+    memset(&values, 0, sizeof(struct argvalues));
+    values.treewalk = 1;
+    if (argc > 3) {
+        values.error = 1;
+    } else if (argc == 3) {
+        values.repl = 0;
+        values.filename = (char*)argv[1];
+        if (strncmp(argv[2], "--tree-walk", 12) == 0) {
+            values.treewalk = 1;
+        } else if (strncmp(argv[2], "--vm", 5) == 0) {
+            values.treewalk = 0;
+        } else if (strncmp(argv[2], "--help", 7) == 0) {
+            values.help = 1;
+        } else {
+            values.error = 1;
+        }
+    } else if (argc == 2) {
+        values.repl = 1;
+        if (strncmp(argv[1], "--tree-walk", 12) == 0) {
+            values.treewalk = 1;
+        } else if (strncmp(argv[1], "--vm", 5) == 0) {
+            values.treewalk = 0;
+        } else if (strncmp(argv[1], "--help", 7) == 0) {
+            values.help = 1;
+        } else {
+            values.repl = 0;
+            values.filename = (char*)argv[1];
+        }
+    }
+
+    return values;
+}
+
+void run_repl(RunnableMode mode)
+{
+}
 
 int main(int argc, char* argv[])
 {
@@ -24,38 +81,50 @@ int main(int argc, char* argv[])
     char* name = strrchr(argv[0], separator);
     char* line = NULL;
     char* buf = NULL;
+    RunnableMode mode;
+    ArgValues values = argparse(argc, argv);
     name = name != NULL ? name + 1 : name;
 
-    if (argc > 2) {
+    if (values.error) {
         usage(name);
-    } else {
-        header(name);
-        env_init_global();
-        if (argc == 2) {
-            buf = read_file(argv[1]);
-            if (buf == NULL) {
-                fprintf(stderr, "%s\n", strerror(errno));
-            } else {
-                run(buf);
-            }
-            getchar();
-        } else {
-            printf("Type 'exit()' to exit\n");
-            for (line = read_line("> "); line != NULL && strcmp(line, "exit()\n") != 0; line = read_line("> ")) {
-                run(line);
-                fr(line);
-            }
-        }
-        env_destroy(&GlobalExecutionEnvironment);
+        return EXIT_FAILURE;
     }
+
+    if (values.help) {
+        usage(name);
+        return EXIT_SUCCESS;
+    }
+
+    header(name);
+    if (values.repl) {
+        mode.codeRunner = values.treewalk ? run_treewalk_chunk : run_vm_chunk;
+        printf("Type 'exit()' to exit\n");
+        for (line = read_line("> "); line != NULL && strcmp(line, "exit()\n") != 0; line = read_line("> ")) {
+            mode.codeRunner(line);
+            fr(line);
+        }
+    } else {
+        buf = read_file(argv[1]);
+        if (buf == NULL) {
+            fprintf(stderr, "%s\n", strerror(errno));
+        } else {
+            mode.codeRunner = values.treewalk ? run_treewalk_file : run_vm_file;
+            mode.codeRunner(buf);
+        }
+    }
+
+    getchar();
     return EXIT_SUCCESS;
 }
 
 void usage(char* name)
 {
     header(name);
-    printf("`%s <filename>` to interpret a file.\n", name);
-    printf("`%s` to launch REPL interpreter.\n", name);
+    printf("`%s <filename>`\n", name);
+    printf("\t\t`%s` to launch REPL interpreter.\n", name);
+    printf("\t\t--tree-walk\t\truns clox in tree walk mode");
+    printf("\t\t--vm\t\truns clox in bytecode mode (default)");
+    printf("\t\t--help\t\tshows this help text");
 }
 
 void header(char* name)
@@ -109,7 +178,22 @@ char* read_line(const char* prompt)
     return line;
 }
 
-void run(const char* code)
+void run_treewalk_chunk(const char* code)
 {
     interp(code);
+}
+
+void run_treewalk_file(const char* code)
+{
+    env_init_global();
+    run_treewalk_chunk(code);
+    env_destroy(&GlobalExecutionEnvironment);
+}
+
+void run_vm_chunk(const char* code)
+{
+}
+
+void run_vm_file(const char* code)
+{
 }
