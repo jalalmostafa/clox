@@ -36,7 +36,7 @@ You can also use `VS Code` to automate builds and run tests. Below is a table of
 | Task Name                   | Job                                                                               | Hotkey (default) |
 | --------------------------- | --------------------------------------------------------------------------------- |:----------------:|
 | Build                       | Compile source code and generate binaries                                         | `Ctrl+Shift+B`   |
-| Rebuild                     | Run `cmake` to make build files generation then run `Build` task                  |                  |
+| Rebuild                     | Run `cmake` to generate build files then run `Build` task                         |                  |
 | Run Read Test with Treewalk | Run `clox` with `examples/read_from_input.lox` and `--tree-walk` in the arguments |                  |
 | Run Read Test with VM       | Run `clox` with `examples/read_from_input.lox` and `--vm` in the arguments        |                  |
 
