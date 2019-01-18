@@ -22,3 +22,12 @@ void* clone(void* src, size_t size)
     memcpy(dst, src, size);
     return dst;
 }
+
+void* reallocate(void* previous, size_t oldSize, size_t newSize) {
+    if(newSize == 0) {
+        free(previous);
+        return NULL;
+    }
+
+    return realloc(previous, newSize);
+}

@@ -3,7 +3,9 @@
 [![Build Status](https://travis-ci.org/jalalmostafa/clox.svg?branch=master)](https://travis-ci.org/jalalmostafa/clox)
 [![Build status](https://ci.appveyor.com/api/projects/status/xhuvod8r2je1juwd/branch/master?svg=true)](https://ci.appveyor.com/project/JalalMostafa/clox/branch/master)
 
-clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter in ANSI C.
+clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter and virtual machine (soon!) in ANSI C.
+
+Progress: [Ch.15 A Virtual Machine](http://craftinginterpreters.com/a-virtual-machine.html)
 
 ## Coding Conventions
 
@@ -27,9 +29,16 @@ cmake --build .
 
 In order to execute clox, check `bin` folder in project directory for binaries. Execute with `--tree-walk` in the arguments.
 
-## Download
+### VS Code
 
-Download [lastest](https://github.com/jalalmostafa/clox/releases).
+You can also use `VS Code` to automate builds and run tests. Below is a table of the available tasks but at first make sure you have created `/build/` folder.
+
+| Task Name                   | Job                                                                               | Hotkey (default) |
+| --------------------------- |:---------------------------------------------------------------------------------:|:----------------:|
+| Build                       | Compile source code and generate binaries                                         | `Ctrl+Shift+B`   |
+| Rebuild                     | Run `cmake` to make build files generation then run `Build` task                  |                  |
+| Run Read Test with Treewalk | Run `clox` with `examples/read_from_input.lox` and `--tree-walk` in the arguments |                  |
+| Run Read Test with VM       | Run `clox` with `examples/read_from_input.lox` and `--vm` in the arguments        |                  |
 
 ## License
 

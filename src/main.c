@@ -3,6 +3,8 @@
 #include "global.h"
 #include "interp.h"
 #include "mem.h"
+#include "vm/chunk.h"
+#include "vm/debug.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +31,7 @@ void run_treewalk_chunk(const char* code);
 void run_treewalk_file(const char* code);
 void run_vm_chunk(const char* code);
 void run_vm_file(const char* code);
+void vm_chunk_test();
 
 ArgValues argparse(int argc, const char* argv[])
 {
@@ -65,10 +68,6 @@ ArgValues argparse(int argc, const char* argv[])
     }
 
     return values;
-}
-
-void run_repl(RunnableMode mode)
-{
 }
 
 int main(int argc, char* argv[])
@@ -113,7 +112,6 @@ int main(int argc, char* argv[])
         }
     }
 
-    getchar();
     return EXIT_SUCCESS;
 }
 
@@ -192,8 +190,24 @@ void run_treewalk_file(const char* code)
 
 void run_vm_chunk(const char* code)
 {
+    vm_chunk_test();
 }
 
 void run_vm_file(const char* code)
 {
+    vm_chunk_test();
+}
+
+void vm_chunk_test()
+{
+    int constantIdx;
+    Chunk chunk;
+    chunk_init(&chunk);
+    chunk_write(&chunk, OP_RETURN, 1);
+    constantIdx = chunk_constants_add(&chunk, 1.2);
+    chunk_write(&chunk, OP_CONSTANT, 1);
+    chunk_write(&chunk, constantIdx, 1);
+    chunk_write(&chunk, OP_RETURN, 2);
+    chunk_disassemble(&chunk, "Test Chunk");
+    chunk_free(&chunk);
 }
