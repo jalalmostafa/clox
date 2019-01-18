@@ -5,6 +5,7 @@
 #include "mem.h"
 #include "vm/chunk.h"
 #include "vm/debug.h"
+#include "vm/vm.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -202,12 +203,14 @@ void vm_chunk_test()
 {
     int constantIdx;
     Chunk chunk;
+    vm_init();
     chunk_init(&chunk);
-    chunk_write(&chunk, OP_RETURN, 1);
     constantIdx = chunk_constants_add(&chunk, 1.2);
     chunk_write(&chunk, OP_CONSTANT, 1);
     chunk_write(&chunk, constantIdx, 1);
     chunk_write(&chunk, OP_RETURN, 2);
+    vm_interpret(&chunk);
     chunk_disassemble(&chunk, "Test Chunk");
+    vm_free();
     chunk_free(&chunk);
 }

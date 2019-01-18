@@ -4,8 +4,26 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "bootstrap",
             "type": "shell",
+            "linux": {
+                "args": [
+                    "-p",
+                    "${workspaceFolder}/build"
+                ],
+                "command": "mkdir",
+            },
+            "windows": {
+                "command": "cmd /C if not exist \"${workspaceFolder}\\build\" mkdir ${workspaceFolder}\\build"
+            },
+            "group": "none"
+        },
+        {
+            "label": "Build",
+            "type": "shell",
+            "dependsOn": [
+                "bootstrap"
+            ],
             "command": "cmake --build ${workspaceFolder}/build",
             "group": {
                 "kind": "build",
@@ -13,22 +31,25 @@
             }
         },
         {
-            "label": "cmake",
+            "label": "buildfiles",
             "type": "shell",
+            "dependsOn": [
+                "bootstrap"
+            ],
             "command": "cmake -B${workspaceFolder}/build -H${workspaceFolder}",
             "group": "build"
         },
         {
-            "label": "rebuild",
+            "label": "Rebuild",
             "type": "shell",
             "dependsOn": [
-                "cmake"
+                "buildfiles"
             ],
             "command": "cmake --build ${workspaceFolder}/build",
             "group": "build"
         },
         {
-            "label": "test read with vm",
+            "label": "Run Read Test with VM",
             "type": "shell",
             "command": "${workspaceFolder}/bin/lox",
             "args": [
@@ -44,7 +65,7 @@
             }
         },
         {
-            "label": "test read with treewalk",
+            "label": "Run Read Test with Treewalk",
             "type": "shell",
             "command": "${workspaceFolder}/bin/lox",
             "args": [

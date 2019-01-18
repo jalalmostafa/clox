@@ -31,7 +31,7 @@ In order to execute clox, check `bin` folder in project directory for binaries. 
 
 ### VS Code
 
-You can also use `VS Code` to automate builds and run tests. Below is a table of the available tasks but at first make sure you have created `/build/` folder.
+You can also use `VS Code` to automate builds and run tests. Below is a table of the available tasks. If it is the first time running the project, then be sure to generate build files by running `Rebuild` task
 
 | Task Name                   | Job                                                                               | Hotkey (default) |
 | --------------------------- | --------------------------------------------------------------------------------- |:----------------:|

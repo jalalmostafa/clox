@@ -23,7 +23,7 @@
 			"cwd": "${workspaceFolder}",
 			"environment": [],
             "externalConsole": true,
-            "preLaunchTask": "build"
+            "preLaunchTask": "Build"
 		}
 	]
 }
