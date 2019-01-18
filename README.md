@@ -34,7 +34,7 @@ In order to execute clox, check `bin` folder in project directory for binaries. 
 You can also use `VS Code` to automate builds and run tests. Below is a table of the available tasks but at first make sure you have created `/build/` folder.
 
 | Task Name                   | Job                                                                               | Hotkey (default) |
-| --------------------------- |:---------------------------------------------------------------------------------:|:----------------:|
+| --------------------------- | --------------------------------------------------------------------------------- |:----------------:|
 | Build                       | Compile source code and generate binaries                                         | `Ctrl+Shift+B`   |
 | Rebuild                     | Run `cmake` to make build files generation then run `Build` task                  |                  |
 | Run Read Test with Treewalk | Run `clox` with `examples/read_from_input.lox` and `--tree-walk` in the arguments |                  |
