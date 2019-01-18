@@ -6,7 +6,55 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "cmake --build ${workspaceFolder}/build"
+            "command": "cmake --build ${workspaceFolder}/build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "cmake",
+            "type": "shell",
+            "command": "cmake -B${workspaceFolder}/build -H${workspaceFolder}",
+            "group": "build"
+        },
+        {
+            "label": "rebuild",
+            "type": "shell",
+            "dependsOn": [
+                "cmake"
+            ],
+            "command": "cmake --build ${workspaceFolder}/build",
+            "group": "build"
+        },
+        {
+            "label": "test read with vm",
+            "type": "shell",
+            "command": "${workspaceFolder}/bin/lox",
+            "args": [
+                "${workspaceFolder}/examples/read_from_stdin.lox",
+                "--vm"
+            ],
+            "windows": {
+                "command": "${workspaceFolder}/bin/Debug/lox"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "test read with treewalk",
+            "type": "shell",
+            "command": "${workspaceFolder}/bin/lox",
+            "args": [
+                "${workspaceFolder}/examples/read_from_stdin.lox",
+                "--tree-walk"
+            ],
+            "windows": {
+                "command": "${workspaceFolder}/bin/Debug/lox"
+            },
+            "group": "test"
         }
     ]
 }
