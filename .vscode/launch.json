@@ -14,9 +14,9 @@
 			"name": "(Windows) Debug",
 			"type": "cppvsdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/bin/Debug/lox.exe",
+			"program": "${workspaceFolder}\\bin\\Debug\\lox.exe",
 			"args": [
-				"E:\\Projects\\clox\\examples\\read_from_stdin.lox",
+				"${workspaceFolder}\\examples\\read_from_stdin.lox",
                 "--vm"
 			],
 			"stopAtEntry": false,

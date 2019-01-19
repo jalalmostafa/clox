@@ -3,9 +3,9 @@
 [![Build Status](https://travis-ci.org/jalalmostafa/clox.svg?branch=master)](https://travis-ci.org/jalalmostafa/clox)
 [![Build status](https://ci.appveyor.com/api/projects/status/xhuvod8r2je1juwd/branch/master?svg=true)](https://ci.appveyor.com/project/JalalMostafa/clox/branch/master)
 
-clox is a cross-platform implementation of [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter and virtual machine (soon!) in ANSI C.
+clox is a cross-platform implementation of a tree-walk [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter and a virtual machine (soon!) in ANSI C.
 
-Progress: [Ch.15 A Virtual Machine](http://craftinginterpreters.com/a-virtual-machine.html)
+Progress: [Ch.16 Scanning on Demand](http://craftinginterpreters.com/scanning-on-demand.html)
 
 ## Coding Conventions
 
@@ -39,7 +39,3 @@ You can also use `VS Code` to automate builds and run tests. Below is a table of
 | Rebuild                     | Run `cmake` to generate build files then run `Build` task                         |                  |
 | Run Read Test with Treewalk | Run `clox` with `examples/read_from_input.lox` and `--tree-walk` in the arguments |                  |
 | Run Read Test with VM       | Run `clox` with `examples/read_from_input.lox` and `--vm` in the arguments        |                  |
-
-## License
-
-clox can be freely distributed under the [MIT License](https://github.com/jalalmostafa/clox/blob/master/LICENSE)

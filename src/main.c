@@ -26,7 +26,7 @@ typedef struct runnable_mode {
 void usage(char* name);
 void header(char* name);
 char* read_line(const char* prompt);
-char* read_file(char* filepath);
+char* read_file(const char* filepath);
 
 void run_treewalk_chunk(const char* code);
 void run_treewalk_file(const char* code);
@@ -37,7 +37,6 @@ void vm_chunk_test();
 ArgValues argparse(int argc, const char* argv[])
 {
     ArgValues values;
-    int i = 0;
     memset(&values, 0, sizeof(struct argvalues));
     values.treewalk = 1;
     if (argc > 3) {
@@ -71,7 +70,7 @@ ArgValues argparse(int argc, const char* argv[])
     return values;
 }
 
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
 #ifdef _WIN32
     char separator = '\\';
@@ -135,7 +134,7 @@ void header(char* name)
     }
 }
 
-char* read_file(char* filepath)
+char* read_file(const char* filepath)
 {
     int length = 0;
     FILE* fp = fopen(filepath, "r");
@@ -205,10 +204,27 @@ void vm_chunk_test()
     Chunk chunk;
     vm_init();
     chunk_init(&chunk);
+
     constantIdx = chunk_constants_add(&chunk, 1.2);
     chunk_write(&chunk, OP_CONSTANT, 1);
     chunk_write(&chunk, constantIdx, 1);
+
+    constantIdx = chunk_constants_add(&chunk, 3.4);
+    chunk_write(&chunk, OP_CONSTANT, 123);
+    chunk_write(&chunk, constantIdx, 123);
+
+    chunk_write(&chunk, OP_ADD, 123);
+
+    constantIdx = chunk_constants_add(&chunk, 5.6);
+    chunk_write(&chunk, OP_CONSTANT, 123);
+    chunk_write(&chunk, constantIdx, 123);
+
+    chunk_write(&chunk, OP_DIVIDE, 123);
+
+    chunk_write(&chunk, OP_NEGATE, 1);
+
     chunk_write(&chunk, OP_RETURN, 2);
+
     vm_interpret(&chunk);
     chunk_disassemble(&chunk, "Test Chunk");
     vm_free();

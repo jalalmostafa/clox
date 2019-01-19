@@ -1,14 +1,19 @@
 #ifndef CLOX_CHUNK
 #define CLOX_CHUNK
 
-#include "common.h"
 #include "mem.h"
+#include "vm/common.h"
 #include "vm/value.h"
 #include <stdlib.h>
 
 typedef enum clox_opcode {
     OP_RETURN,
     OP_CONSTANT,
+    OP_NEGATE,
+    OP_ADD,
+    OP_SUBTRACT,
+    OP_MULTIPLY,
+    OP_DIVIDE
 } OpCode;
 
 typedef struct clox_chunk {

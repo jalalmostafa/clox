@@ -1,41 +1,22 @@
 {
-	"files.associations": {
-		"*.props": "xml",
-		"*.targets": "xml",
-		"stdio.h": "c",
-		"tokenizer.h": "c",
-		"list.h": "c",
-		"mem.h": "c",
-		"global.h": "c",
-		"stdlib.h": "c",
-		"readline.h": "c",
-		"lox-config.h": "c",
-		"except.h": "c",
-		"parser.h": "c",
-		"parse.h": "c",
-		"interp.h": "c",
-		"lldict.h": "c",
-		"env.h": "c",
-		"eval.h": "c",
-		"string.h": "c",
-		"errno.h": "c",
-		"time.h": "c",
-		"visitor.h": "c"
-	},
-	"c-cpp-flylint.clang.pedantic": true,
-	"c-cpp-flylint.clang.includePaths": [
-		"${workspaceRoot}/include",
-		"${workspaceRoot}/build"
-	],
-	"c-cpp-flylint.clang.warnings": [
-		"all",
-		"extra"
-	],
-	"c-cpp-flylint.clang.defines": [
-		"_CRT_SECURE_NO_WARNINGS"
-	],
-	"c-cpp-flylint.clang.standard": [
-		"c89"
-	],
-	"c-cpp-flylint.clang.language": "c"
+    "files.associations": {
+        "*.h": "c",
+        "*.c": "c"
+    },
+    "c-cpp-flylint.clang.pedantic": true,
+    "c-cpp-flylint.clang.includePaths": [
+        "${workspaceRoot}/include",
+        "${workspaceRoot}/build"
+    ],
+    "c-cpp-flylint.clang.warnings": [
+        "all",
+        "extra"
+    ],
+    "c-cpp-flylint.clang.defines": [
+        "_CRT_SECURE_NO_WARNINGS"
+    ],
+    "c-cpp-flylint.clang.standard": [
+        "c89"
+    ],
+    "c-cpp-flylint.clang.language": "c"
 }
