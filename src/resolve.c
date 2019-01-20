@@ -1,7 +1,6 @@
 #include "resolve.h"
-#include "ds/list.h"
 #include "ds/dict.h"
-#include "except.h"
+#include "ds/list.h"
 #include "mem.h"
 #include "visitor.h"
 #include <stdio.h>
@@ -71,8 +70,8 @@ static List* scopes = NULL;
 static FunctionType current_function_type = FUNCTION_TYPE_NONE;
 static ClassType current_class_type = CLASS_TYPE_NONE;
 
-static int scope_delete_value(KeyValuePair* pair) {
-    //fr(pair->value);
+static int scope_delete_value(KeyValuePair* pair)
+{
     pair->value = NULL;
     return 1;
 }

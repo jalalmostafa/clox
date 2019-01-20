@@ -1,10 +1,10 @@
 #include "parse.h"
 #include "ds/list.h"
-#include "except.h"
 #include "global.h"
 #include "mem.h"
 #include "tokenizer.h"
 #include "visitor.h"
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -151,51 +151,51 @@ static Expr* primary(Node** node)
     ThisExpr* this = NULL;
     SuperExpr* super = NULL;
 
-    if (MATCH(tkn->type, TRUE)) {
+    if (MATCH(tkn->type, TOKEN_TRUE)) {
         (*node) = (*node)->next;
         return new_expr(EXPR_LITERAL, (void*)new_true());
     }
 
-    if (MATCH(tkn->type, FALSE)) {
+    if (MATCH(tkn->type, TOKEN_FALSE)) {
         (*node) = (*node)->next;
         return new_expr(EXPR_LITERAL, (void*)new_false());
     }
 
-    if (MATCH(tkn->type, NIL)) {
+    if (MATCH(tkn->type, TOKEN_NIL)) {
         (*node) = (*node)->next;
         return new_expr(EXPR_LITERAL, (void*)new_nil());
     }
 
-    if (MATCH(tkn->type, STRING)) {
+    if (MATCH(tkn->type, TOKEN_STRING)) {
         (*node) = (*node)->next;
         return new_expr(EXPR_LITERAL, new_literal(tkn->literal, LITERAL_STRING, strlen(tkn->literal) + 1));
     }
 
-    if (MATCH(tkn->type, NUMBER)) {
+    if (MATCH(tkn->type, TOKEN_NUMBER)) {
         (*node) = (*node)->next;
         doubleLiteral = (double*)alloc(sizeof(double));
         *doubleLiteral = atof(tkn->literal);
         return new_expr(EXPR_LITERAL, new_literal(doubleLiteral, LITERAL_NUMBER, sizeof(double)));
     }
 
-    if (MATCH(tkn->type, LEFT_PAREN)) {
+    if (MATCH(tkn->type, TOKEN_LEFT_PAREN)) {
         *node = (*node)->next;
         groupedExpr = expression(node);
-        n = consume(node, RIGHT_PAREN, "Expect ')' after expression.");
+        n = consume(node, TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
         if (n == NULL) {
             return NULL;
         }
         return new_expr(EXPR_GROUPING, (void*)new_grouping(groupedExpr));
     }
 
-    if (MATCH(tkn->type, SUPER)) {
+    if (MATCH(tkn->type, TOKEN_SUPER)) {
         super = (SuperExpr*)alloc(sizeof(SuperExpr));
         super->keyword = *(Token*)(*node)->prev->data;
-        if (consume(node, DOT, "Expect '.' after 'super'.") == NULL) {
+        if (consume(node, TOKEN_DOT, "Expect '.' after 'super'.") == NULL) {
             fr(super);
             return NULL;
         }
-        n = consume(node, IDENTIFIER, "Expect superclass method name.");
+        n = consume(node, TOKEN_IDENTIFIER, "Expect superclass method name.");
         if (n == NULL) {
             fr(super);
             return NULL;
@@ -204,13 +204,13 @@ static Expr* primary(Node** node)
         return new_expr(EXPR_SUPER, super);
     }
 
-    if (MATCH(tkn->type, THIS)) {
+    if (MATCH(tkn->type, TOKEN_THIS)) {
         this = (ThisExpr*)alloc(sizeof(ThisExpr));
         this->keyword = *(Token*)(*node)->prev->data;
         return new_expr(EXPR_THIS, this);
     }
 
-    if (MATCH(tkn->type, IDENTIFIER)) {
+    if (MATCH(tkn->type, TOKEN_IDENTIFIER)) {
         *node = (*node)->next;
         return new_expr(EXPR_VARIABLE, new_variable(*(Token*)(*node)->prev->data));
     }
@@ -244,7 +244,7 @@ static Expr* finish_call(Node** node, Expr* callee)
             return NULL;
         }
 
-        if (!MATCH(tkn->type, RIGHT_PAREN)) {
+        if (!MATCH(tkn->type, TOKEN_RIGHT_PAREN)) {
             arg = expression(node);
         }
 
@@ -253,8 +253,8 @@ static Expr* finish_call(Node** node, Expr* callee)
         }
 
         tkn = (Token*)(*node)->data;
-    } while (MATCH(tkn->type, COMMA));
-    temp = consume(node, RIGHT_PAREN, "Expect ')' for function EXPR_CALL");
+    } while (MATCH(tkn->type, TOKEN_COMMA));
+    temp = consume(node, TOKEN_RIGHT_PAREN, "Expect ')' for function EXPR_CALL");
     paren = (Token*)(*temp)->data;
     return new_expr(EXPR_CALL, new_call(callee, args, *paren));
 }
@@ -267,11 +267,11 @@ static Expr* call(Node** node)
     Node** temp = NULL;
 
     while (1) {
-        if (MATCH(tkn->type, LEFT_PAREN)) {
+        if (MATCH(tkn->type, TOKEN_LEFT_PAREN)) {
             expr = finish_call(node, expr);
-        } else if (MATCH(tkn->type, DOT)) {
+        } else if (MATCH(tkn->type, TOKEN_DOT)) {
             (*node) = (*node)->next;
-            temp = consume(node, IDENTIFIER, "Expect property name after '.'.");
+            temp = consume(node, TOKEN_IDENTIFIER, "Expect property name after '.'.");
             if (temp != NULL) {
                 name = *(Token*)((*temp)->data);
                 get = (GetExpr*)alloc(sizeof(GetExpr));
@@ -292,8 +292,8 @@ static Expr* unary(Node** node)
     Expr* rightExpr = NULL;
     const Token *tkn = (Token*)(*node)->data, *tknPrev = NULL;
     TokenType unaryTokens[] = {
-        MINUS,
-        BANG
+        TOKEN_MINUS,
+        TOKEN_BANG
     };
     if (match(tkn->type, unaryTokens, 2, node)) {
         tknPrev = (Token*)(*node)->prev->data;
@@ -307,8 +307,8 @@ static Expr* unary(Node** node)
 static Expr* mutiplication(Node** node)
 {
     TokenType multiplicationTokens[] = {
-        SLASH,
-        STAR
+        TOKEN_SLASH,
+        TOKEN_STAR
     };
     return binary_production(node, unary, multiplicationTokens, 2);
 }
@@ -316,8 +316,8 @@ static Expr* mutiplication(Node** node)
 static Expr* addition(Node** node)
 {
     TokenType additionTokens[] = {
-        MINUS,
-        PLUS
+        TOKEN_MINUS,
+        TOKEN_PLUS
     };
     return binary_production(node, mutiplication, additionTokens, 2);
 }
@@ -325,10 +325,10 @@ static Expr* addition(Node** node)
 static Expr* comparison(Node** node)
 {
     TokenType comparisonTokens[] = {
-        GREATER,
-        GREATER_EQUAL,
-        LESS,
-        LESS_EQUAL
+        TOKEN_GREATER,
+        TOKEN_GREATER_EQUAL,
+        TOKEN_LESS,
+        TOKEN_LESS_EQUAL
     };
     return binary_production(node, addition, comparisonTokens, 4);
 }
@@ -336,8 +336,8 @@ static Expr* comparison(Node** node)
 static Expr* equality(Node** node)
 {
     TokenType equalityTokens[] = {
-        BANG_EQUAL,
-        EQUAL_EQUAL
+        TOKEN_BANG_EQUAL,
+        TOKEN_EQUAL_EQUAL
     };
     return binary_production(node, comparison, equalityTokens, 2);
 }
@@ -349,7 +349,7 @@ static Expr* assignment(Node** node)
     GetExpr* get = NULL;
     SetExpr* set = NULL;
 
-    if (MATCH(((Token*)equals->data)->type, EQUAL)) {
+    if (MATCH(((Token*)equals->data)->type, TOKEN_EQUAL)) {
         (*node) = (*node)->next;
         value = assignment(node);
         if (expr != NULL && expr->type == EXPR_VARIABLE) {
@@ -386,7 +386,7 @@ static Expr* logicOr(Node** node)
     const Token* tkn = (Token*)(*node)->data;
     Token* operatorTkn = NULL;
 
-    while (MATCH(tkn->type, OR)) {
+    while (MATCH(tkn->type, TOKEN_OR)) {
         operatorTkn = (Token*)(*node)->data;
         (*node) = (*node)->next;
         tkn = (Token*)(*node)->data;
@@ -401,7 +401,7 @@ static Expr* logicAnd(Node** node)
     Expr *expr = equality(node), *right = NULL;
     Token *tkn = (Token*)(*node)->data, *operatorTkn = NULL;
 
-    while (MATCH(tkn->type, AND)) {
+    while (MATCH(tkn->type, TOKEN_AND)) {
         operatorTkn = (Token*)(*node)->data;
         (*node) = (*node)->next;
         tkn = (Token*)(*node)->data;
@@ -424,18 +424,18 @@ static void synchronize(Node** node)
         token = (Token*)(*node)->data;
         while (!END_OF_TOKENS(token->type)) {
             prevToken = (Token*)(*node)->prev->data;
-            if (prevToken->type == SEMICOLON)
+            if (prevToken->type == TOKEN_SEMICOLON)
                 return;
 
             switch (token->type) {
-            case CLASS:
-            case FUN:
-            case VAR:
-            case FOR:
-            case IF:
-            case WHILE:
-            case PRINT:
-            case RETURN:
+            case TOKEN_CLASS:
+            case TOKEN_FUN:
+            case TOKEN_VAR:
+            case TOKEN_FOR:
+            case TOKEN_IF:
+            case TOKEN_WHILE:
+            case TOKEN_PRINT:
+            case TOKEN_RETURN:
                 return;
             }
             (*node) = (*node)->next;
@@ -445,7 +445,7 @@ static void synchronize(Node** node)
 
 static Node** terminated_statement(Node** node)
 {
-    return consume(node, SEMICOLON, "Expect ';' after value");
+    return consume(node, TOKEN_SEMICOLON, "Expect ';' after value");
 }
 
 static Stmt* new_statement(StmtType type, void* realStmt)
@@ -500,7 +500,7 @@ static Stmt* var_statement(Node** node, Expr* initializer, Token variableName)
 
 static Stmt* var_declaration(Node** node)
 {
-    Node** identifierNode = consume(node, IDENTIFIER, "Expected a EXPR_VARIABLE name");
+    Node** identifierNode = consume(node, TOKEN_IDENTIFIER, "Expected a EXPR_VARIABLE name");
     Token* name = NULL;
     Expr* initializer = NULL;
 
@@ -509,7 +509,7 @@ static Stmt* var_declaration(Node** node)
     }
     name = (Token*)(*identifierNode)->data;
 
-    if (MATCH(((Token*)(*node)->data)->type, EQUAL)) {
+    if (MATCH(((Token*)(*node)->data)->type, TOKEN_EQUAL)) {
         (*node) = (*node)->next;
         initializer = expression(node);
     }
@@ -520,22 +520,22 @@ static Stmt* var_declaration(Node** node)
 static Stmt* statement(Node** node)
 {
     const Token* tkn = (Token*)((*node)->data);
-    if (MATCH(tkn->type, PRINT)) {
+    if (MATCH(tkn->type, TOKEN_PRINT)) {
         (*node) = (*node)->next;
         return print_statement(node);
-    } else if (MATCH(tkn->type, LEFT_BRACE)) {
+    } else if (MATCH(tkn->type, TOKEN_LEFT_BRACE)) {
         (*node) = (*node)->next;
         return block_statements(node);
-    } else if (MATCH(tkn->type, IF)) {
+    } else if (MATCH(tkn->type, TOKEN_IF)) {
         (*node) = (*node)->next;
         return if_statement(node);
-    } else if (MATCH(tkn->type, FOR)) {
+    } else if (MATCH(tkn->type, TOKEN_FOR)) {
         (*node) = (*node)->next;
         return for_statement(node);
-    } else if (MATCH(tkn->type, WHILE)) {
+    } else if (MATCH(tkn->type, TOKEN_WHILE)) {
         (*node) = (*node)->next;
         return while_statement(node);
-    } else if (MATCH(tkn->type, RETURN)) {
+    } else if (MATCH(tkn->type, TOKEN_RETURN)) {
         (*node) = (*node)->next;
         return return_statement(node);
     }
@@ -546,7 +546,7 @@ static Stmt* statement(Node** node)
 static Stmt* class_statement(Node** node)
 {
     ClassStmt* stmt = NULL;
-    Node** classNameNode = consume(node, IDENTIFIER, "Expect class name");
+    Node** classNameNode = consume(node, TOKEN_IDENTIFIER, "Expect class name");
     Token *name = NULL, *temp = NULL;
     List* methods = NULL;
     Expr* superClassExpr = NULL;
@@ -557,23 +557,23 @@ static Stmt* class_statement(Node** node)
     }
     name = (Token*)(*classNameNode)->data;
     temp = (Token*)(*node)->data;
-    if (MATCH(temp->type, LESS)) {
+    if (MATCH(temp->type, TOKEN_LESS)) {
         (*node) = (*node)->next;
-        if (consume(node, IDENTIFIER, "Expect super class") == NULL) {
+        if (consume(node, TOKEN_IDENTIFIER, "Expect super class") == NULL) {
             return NULL;
         }
         superClass = (VariableExpr*)alloc(sizeof(VariableExpr));
         superClass->variableName = *((Token*)(*node)->prev->data);
         superClassExpr = new_expr(EXPR_VARIABLE, superClass);
     }
-    consume(node, LEFT_BRACE, "Expect '{' before class body");
+    consume(node, TOKEN_LEFT_BRACE, "Expect '{' before class body");
     temp = (Token*)(*node)->data;
     methods = list();
-    while (!MATCH(temp->type, RIGHT_BRACE) && !END_OF_TOKENS(temp->type)) {
+    while (!MATCH(temp->type, TOKEN_RIGHT_BRACE) && !END_OF_TOKENS(temp->type)) {
         list_push(methods, fun_statement("method", node));
         temp = (Token*)(*node)->data;
     }
-    consume(node, RIGHT_BRACE, "Expect '}' after class body");
+    consume(node, TOKEN_RIGHT_BRACE, "Expect '}' after class body");
     stmt = (ClassStmt*)alloc(sizeof(ClassStmt));
     stmt->methods = methods;
     stmt->name = *name;
@@ -585,13 +585,13 @@ static Stmt* declaration(Node** node)
 {
     const Token* tkn = (Token*)((*node)->data);
     Stmt* stmt = NULL;
-    if (MATCH(tkn->type, CLASS)) {
+    if (MATCH(tkn->type, TOKEN_CLASS)) {
         (*node) = (*node)->next;
         return class_statement(node);
-    } else if (MATCH(tkn->type, FUN)) {
+    } else if (MATCH(tkn->type, TOKEN_FUN)) {
         (*node) = (*node)->next;
         return fun_statement("function", node);
-    } else if (MATCH(tkn->type, VAR)) {
+    } else if (MATCH(tkn->type, TOKEN_VAR)) {
         (*node) = (*node)->next;
         stmt = var_declaration(node);
     } else {
@@ -610,11 +610,11 @@ static Stmt* block_statements(Node** node)
     BlockStmt* stmt = (BlockStmt*)alloc(sizeof(BlockStmt));
     stmt->innerStmts = list();
     token = (Token*)(*node)->data;
-    while (token->type != RIGHT_BRACE && token->type != ENDOFFILE) {
+    while (token->type != TOKEN_RIGHT_BRACE && token->type != TOKEN_ENDOFFILE) {
         list_push(stmt->innerStmts, declaration(node));
         token = (Token*)(*node)->data;
     }
-    consume(node, RIGHT_BRACE, "Expect '}' after block.");
+    consume(node, TOKEN_RIGHT_BRACE, "Expect '}' after block.");
     return new_statement(STMT_BLOCK, (void*)stmt);
 }
 
@@ -624,12 +624,12 @@ static Stmt* if_statement(Node** node)
     IfElseStmt* realStmt = NULL;
     Token* tkn = (Token*)(*node)->data;
     Expr* condition = NULL;
-    consume(node, LEFT_PAREN, "Expect '(' after 'if'.");
+    consume(node, TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
     condition = expression(node);
-    consume(node, RIGHT_PAREN, "Expect ')' after condition.");
+    consume(node, TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
     thenStmt = statement(node);
     tkn = (Token*)(*node)->data;
-    if (MATCH(tkn->type, ELSE)) {
+    if (MATCH(tkn->type, TOKEN_ELSE)) {
         (*node) = (*node)->next;
         elseStmt = statement(node);
     }
@@ -648,12 +648,12 @@ static Stmt* for_statement(Node** node)
     WhileStmt* wrappedFor = NULL;
     ExprStmt* wrappedStep = NULL;
     Token* tkn = NULL;
-    consume(node, LEFT_PAREN, "Expect '(' after for");
+    consume(node, TOKEN_LEFT_PAREN, "Expect '(' after for");
     tkn = (Token*)(*node)->data;
-    if (MATCH(tkn->type, SEMICOLON)) {
+    if (MATCH(tkn->type, TOKEN_SEMICOLON)) {
         (*node) = (*node)->next;
     } else {
-        if (MATCH(tkn->type, VAR)) {
+        if (MATCH(tkn->type, TOKEN_VAR)) {
             (*node) = (*node)->next;
             initializer = var_declaration(node);
         } else {
@@ -662,14 +662,14 @@ static Stmt* for_statement(Node** node)
         }
     }
     tkn = (Token*)(*node)->data;
-    if (!MATCH(tkn->type, SEMICOLON)) {
+    if (!MATCH(tkn->type, TOKEN_SEMICOLON)) {
         condition = expression(node);
     }
-    consume(node, SEMICOLON, "Expect ';' after for condition");
-    if (!MATCH(tkn->type, RIGHT_PAREN)) {
+    consume(node, TOKEN_SEMICOLON, "Expect ';' after for condition");
+    if (!MATCH(tkn->type, TOKEN_RIGHT_PAREN)) {
         step = expression(node);
     }
-    consume(node, RIGHT_PAREN, "Expect ')' for 'for' closing");
+    consume(node, TOKEN_RIGHT_PAREN, "Expect ')' for 'for' closing");
     body = statement(node);
     if (step != NULL) {
         wrappedBody = alloc(sizeof(BlockStmt));
@@ -703,9 +703,9 @@ static Stmt* while_statement(Node** node)
     WhileStmt* realStmt = NULL;
     Expr* condition = NULL;
     Stmt* bodyStmt = NULL;
-    consume(node, LEFT_PAREN, "Expect '(' after 'while'.");
+    consume(node, TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
     condition = expression(node);
-    consume(node, RIGHT_PAREN, "Expect ')' after condition.");
+    consume(node, TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
     bodyStmt = statement(node);
     realStmt = (WhileStmt*)alloc(sizeof(WhileStmt));
     realStmt->condition = condition;
@@ -723,33 +723,33 @@ static Stmt* fun_statement(const char* kind, Node** node)
     char buf[LINEBUFSIZE];
     memset(buf, 0, LINEBUFSIZE);
     sprintf(buf, "Expect %s name.", kind);
-    temp = consume(node, IDENTIFIER, buf);
+    temp = consume(node, TOKEN_IDENTIFIER, buf);
     if (temp != NULL) {
 
         name = (Token*)(*temp)->data;
         memset(buf, 0, LINEBUFSIZE);
         sprintf(buf, "Expect '(' after %s name.", kind);
-        consume(node, LEFT_PAREN, buf);
+        consume(node, TOKEN_LEFT_PAREN, buf);
         params = list();
         tkn = (Token*)(*node)->data;
-        if (!MATCH(tkn->type, RIGHT_PAREN)) {
+        if (!MATCH(tkn->type, TOKEN_RIGHT_PAREN)) {
             do {
                 if (params->count > MAX_ARGS) {
                     parse_error(tkn, "Cannot have more than 8 parameters.");
                 }
-                temp = consume(node, IDENTIFIER, "Expect parameter name.");
+                temp = consume(node, TOKEN_IDENTIFIER, "Expect parameter name.");
                 tkn = (Token*)(*temp)->data;
                 list_push(params, tkn);
                 tkn = (Token*)(*node)->data;
-                if (!MATCH(tkn->type, RIGHT_PAREN)) {
+                if (!MATCH(tkn->type, TOKEN_RIGHT_PAREN)) {
                     (*node) = (*node)->next;
                 }
-            } while (MATCH(tkn->type, COMMA));
+            } while (MATCH(tkn->type, TOKEN_COMMA));
         }
-        consume(node, RIGHT_PAREN, "Expect ')' after parameters.");
+        consume(node, TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
         memset(buf, 0, LINEBUFSIZE);
         sprintf(buf, "Expect '{' before %s body.", kind);
-        consume(node, LEFT_BRACE, buf);
+        consume(node, TOKEN_LEFT_BRACE, buf);
         body = block_statements(node);
         fnStmt = alloc(sizeof(FunStmt));
         fnStmt->name = *name;
@@ -895,10 +895,10 @@ static Stmt* return_statement(Node** node)
     Token *keyword = (Token*)(*node)->prev->data, *tkn = (Token*)(*node)->data;
     Expr* value = NULL;
     ReturnStmt* returnStmt = NULL;
-    if (!MATCH(tkn->type, SEMICOLON)) {
+    if (!MATCH(tkn->type, TOKEN_SEMICOLON)) {
         value = expression(node);
     }
-    consume(node, SEMICOLON, "Expect ';' after return");
+    consume(node, TOKEN_SEMICOLON, "Expect ';' after return");
     returnStmt = (ReturnStmt*)alloc(sizeof(ReturnStmt));
     returnStmt->keyword = *keyword;
     returnStmt->value = value;
@@ -953,4 +953,21 @@ ParsingContext parse(Tokenization toknz)
     }
     ctx.stmts = stmts;
     return ctx;
+}
+
+void parse_error(Token* token, const char* msg, ...)
+{
+    char buff[LINEBUFSIZE];
+    va_list list;
+    va_start(list, msg);
+
+    memset(buff, 0, sizeof(buff));
+
+    if (token->type == TOKEN_ENDOFFILE) {
+        fprintf(stderr, ERROR_AT_EOF, msg);
+    } else {
+        sprintf(buff, ERROR_AT_LINE, token->line, msg, token->lexeme);
+        vfprintf(stderr, msg, list);
+    }
+    va_end(list);
 }

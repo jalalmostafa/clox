@@ -1,6 +1,5 @@
 #include "eval.h"
 #include "ds/dict.h"
-#include "except.h"
 #include "global.h"
 #include "mem.h"
 #include "parse.h"
@@ -138,14 +137,14 @@ void* visit_binary(Expr* expr)
     }
 
     switch (bexpr->op.type) {
-    case MINUS:
+    case TOKEN_MINUS:
         if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             result = new_number(*((double*)lObject->value) - *((double*)rObject->value));
         } else {
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
-    case PLUS:
+    case TOKEN_PLUS:
         if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             result = new_number(*((double*)lObject->value) + *((double*)rObject->value));
         } else if (rObject->type == OBJ_STRING && lObject->type == OBJ_STRING) {
@@ -160,21 +159,21 @@ void* visit_binary(Expr* expr)
             runtime_error(OPERAND_SAMETYPE, &result, bexpr->op.line);
         }
         break;
-    case SLASH:
+    case TOKEN_SLASH:
         if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             result = new_number(*((double*)lObject->value) / *((double*)rObject->value));
         } else {
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
-    case STAR:
+    case TOKEN_STAR:
         if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             result = new_number(*((double*)lObject->value) * *((double*)rObject->value));
         } else {
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
-    case GREATER:
+    case TOKEN_GREATER:
         if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
@@ -183,7 +182,7 @@ void* visit_binary(Expr* expr)
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
-    case GREATER_EQUAL:
+    case TOKEN_GREATER_EQUAL:
         if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
@@ -192,7 +191,7 @@ void* visit_binary(Expr* expr)
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
-    case LESS:
+    case TOKEN_LESS:
         if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
@@ -201,7 +200,7 @@ void* visit_binary(Expr* expr)
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
-    case LESS_EQUAL:
+    case TOKEN_LESS_EQUAL:
         if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
             lvalue = (double*)lObject->value;
             rvalue = (double*)rObject->value;
@@ -210,7 +209,7 @@ void* visit_binary(Expr* expr)
             runtime_error(OPERAND_NUMBER, &result, bexpr->op.line);
         }
         break;
-    case EQUAL_EQUAL:
+    case TOKEN_EQUAL_EQUAL:
         if (rObject->type == OBJ_NIL && lObject->type == OBJ_NIL) {
             result->value = new_bool(1);
         } else if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
@@ -225,7 +224,7 @@ void* visit_binary(Expr* expr)
             result = new_bool(0);
         }
         break;
-    case BANG_EQUAL:
+    case TOKEN_BANG_EQUAL:
         if (rObject->type == OBJ_NIL && lObject->type == OBJ_NIL) {
             result = new_bool(0);
         } else if (rObject->type == OBJ_NUMBER && lObject->type == OBJ_NUMBER) {
@@ -240,8 +239,8 @@ void* visit_binary(Expr* expr)
             result = new_bool(1);
         }
         break;
-    case AND:
-    case OR:
+    case TOKEN_AND:
+    case TOKEN_OR:
     default:
         break;
     }
@@ -257,12 +256,12 @@ void* visit_unary(Expr* expr)
     Object* rObject = eval_expr(uexpr->expr);
     char* bValue = NULL;
     double* value = NULL;
-    if (uexpr->op.type == BANG) {
+    if (uexpr->op.type == TOKEN_BANG) {
         bValue = (char*)alloc(sizeof(char));
         *bValue = obj_unlikely(rObject);
         obj_destroy(rObject);
         rObject = obj_new(OBJ_BOOL, bValue, sizeof(char));
-    } else if (uexpr->op.type == MINUS) {
+    } else if (uexpr->op.type == TOKEN_MINUS) {
         if (rObject->type != OBJ_NUMBER) {
             runtime_error(OPERAND_NUMBER, &rObject, uexpr->op.line);
         } else {
@@ -340,11 +339,11 @@ void* visit_logical(Expr* expr)
     LogicalExpr* logical = (LogicalExpr*)(expr->expr);
     Object* lvalue = eval_expr(logical->left);
     char lvalueTruth = obj_likely(lvalue);
-    if (logical->op.type == OR) {
+    if (logical->op.type == TOKEN_OR) {
         if (lvalueTruth) {
             return lvalue;
         }
-    } else if (logical->op.type == AND) {
+    } else if (logical->op.type == TOKEN_AND) {
         if (!lvalueTruth) {
             return lvalue;
         }

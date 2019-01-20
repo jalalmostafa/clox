@@ -21,6 +21,6 @@ typedef enum vm_interpret_result {
 
 void vm_init();
 void vm_free();
-VmInterpretResult vm_interpret(Chunk* chunk);
+VmInterpretResult vm_interpret(const char* code);
 
 #endif

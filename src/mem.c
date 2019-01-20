@@ -1,4 +1,4 @@
-#include "except.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -6,7 +6,7 @@ void* alloc(size_t size)
 {
     void* mem = malloc(size);
     if (mem == NULL) {
-        except("No More Memory to allocate");
+        fprintf(stderr, "No More Memory to allocate %ul bytes\n", size);
     }
     return mem;
 }
@@ -23,8 +23,9 @@ void* clone(void* src, size_t size)
     return dst;
 }
 
-void* reallocate(void* previous, size_t oldSize, size_t newSize) {
-    if(newSize == 0) {
+void* reallocate(void* previous, size_t oldSize, size_t newSize)
+{
+    if (newSize == 0) {
         free(previous);
         return NULL;
     }

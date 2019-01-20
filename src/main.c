@@ -1,5 +1,4 @@
 #include "eval.h"
-#include "except.h"
 #include "global.h"
 #include "interp.h"
 #include "mem.h"
@@ -106,10 +105,12 @@ int main(int argc, const char* argv[])
         buf = read_file(argv[1]);
         if (buf == NULL) {
             fprintf(stderr, "%s\n", strerror(errno));
+            exit(74);
         } else {
             mode.codeRunner = values.treewalk ? run_treewalk_file : run_vm_file;
             mode.codeRunner(buf);
         }
+        fr(buf);
     }
 
     return EXIT_SUCCESS;
@@ -136,32 +137,39 @@ void header(char* name)
 
 char* read_file(const char* filepath)
 {
-    int length = 0;
-    FILE* fp = fopen(filepath, "r");
+    size_t readBytes = 0, length = 0;
     char* buf = NULL;
+    FILE* fp = fopen(filepath, "rb");
 
     if (fp == NULL) {
-        except("Cannot open file\n");
+        fprintf(stderr, "Cannot open file %s\n", filepath);
         return NULL;
     }
 
     if (!fseek(fp, SEEK_SET, SEEK_END)) {
         length = ftell(fp);
-        if (!length) {
-            except("Exceeded Maximum File Size\n");
-            return NULL;
-        }
-
         rewind(fp);
     }
-    length++;
-    buf = (char*)malloc(length);
-    memset(buf, 0, length);
-    length = fread(buf, 1, length, fp);
+
+    buf = (char*)malloc(length + 1);
+    if (buf == NULL) {
+        fprintf(stderr, "No enough memory to read file: %s\n", filepath);
+        exit(74);
+    }
+
+    memset(buf, 0, length + 1);
+    readBytes = fread(buf, 1, length, fp);
+    if (readBytes < length) {
+        fprintf(stderr, "Cannot read file: %s\n", filepath);
+        exit(74);
+    }
+
     if (!fclose(fp)) {
         return buf;
     }
+
     fr(buf);
+    fprintf(stderr, "Error opening or reading file %s\n", filepath);
     return NULL;
 }
 
@@ -190,12 +198,20 @@ void run_treewalk_file(const char* code)
 
 void run_vm_chunk(const char* code)
 {
-    vm_chunk_test();
+    vm_interpret(code);
 }
 
 void run_vm_file(const char* code)
 {
-    vm_chunk_test();
+    VmInterpretResult result = vm_interpret(code);
+
+    if (result == INTERPRET_COMPILE_ERROR) {
+        exit(65);
+    }
+
+    if (result == INTERPRET_RUNTIME_ERROR) {
+        exit(70);
+    }
 }
 
 void vm_chunk_test()

@@ -161,8 +161,9 @@ typedef struct parser_t {
 
 ParsingContext parse(Tokenization toknz);
 void parser_destroy(ParsingContext* ctx);
+void parse_error(Token* tkn, const char* msg, ...);
 
-#define END_OF_TOKENS(x) ((x) == ENDOFFILE)
+#define END_OF_TOKENS(x) ((x) == TOKEN_ENDOFFILE)
 #define MATCH(x, type) ((x) == type)
 
 #define UNKNOWN_IDENTIFIER "Unresolved Identifier"

@@ -1,4 +1,5 @@
 #include "vm/vm.h"
+#include "vm/compiler.h"
 #include "vm/debug.h"
 #include <stdio.h>
 
@@ -98,9 +99,8 @@ void vm_free()
     vm_stack_reset();
 }
 
-VmInterpretResult vm_interpret(Chunk* chunk)
+VmInterpretResult vm_interpret(const char* code)
 {
-    vm.chunk = chunk;
-    vm.ip = vm.chunk->code;
-    return run();
+    compile(code);
+    return INTERPRET_OK;
 }
