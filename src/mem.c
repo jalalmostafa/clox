@@ -6,7 +6,7 @@ void* alloc(size_t size)
 {
     void* mem = malloc(size);
     if (mem == NULL) {
-        fprintf(stderr, "No More Memory to allocate %ul bytes\n", size);
+        fprintf(stderr, "No More Memory to allocate %llu bytes\n", size);
     }
     return mem;
 }
