@@ -1,7 +1,12 @@
 #include "vm/vm.h"
 #include "vm/compiler.h"
 #include "vm/debug.h"
+#include "vm/value.h"
+#include <stdarg.h>
 #include <stdio.h>
+
+static void runtime_error(const char* format, ...);
+static VmBoolean is_falsey(Value value);
 
 static VM vm;
 
@@ -21,24 +26,51 @@ static Value vm_stack_pop()
     return *--vm.stackTop;
 }
 
+static Value vm_stack_peek(int distance)
+{
+    return vm.stackTop[-1 - distance];
+}
+
+static void runtime_error(const char* format, ...)
+{
+    va_list args;
+    size_t instruction;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+    fputs("\n", stderr);
+    instruction = vm.ip - vm.chunk->code;
+    fprintf(stderr, "[line %d] in script\n", vm.chunk->lines[instruction]);
+    vm_stack_reset();
+}
+
+static VmBoolean is_falsey(Value value)
+{
+    return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
 static VmInterpretResult vm_run()
 {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
-#define BINARY_OP(op)                 \
-    do {                              \
-        right = vm_stack_pop();       \
-        left = vm_stack_pop();        \
-        vm_stack_push(left op right); \
+#define BINARY_OP(valueType, op)                                            \
+    do {                                                                    \
+        if (!IS_NUMBER(vm_stack_peek(0)) || !IS_NUMBER(vm_stack_peek(1))) { \
+            runtime_error("Operands must be numbers.");                     \
+            return INTERPRET_RUNTIME_ERROR;                                 \
+        }                                                                   \
+        right = AS_NUMBER(vm_stack_pop());                                  \
+        left = AS_NUMBER(vm_stack_pop());                                   \
+        vm_stack_push(valueType(left op right));                            \
     } while (0)
 
     Byte instruction;
-    Value arbitraryValue, *slot = NULL;
-    double left, right;
+    Value arbitraryValue, leftValue, rightValue, *slot = NULL;
+    VmNumber left, right;
 
     for (;;) {
 #ifdef DEBUG_EXECUTION_TRACE
-        printf("\t\t");
+        printf("    ");
         for (slot = vm.stack; slot < vm.stackTop; slot++) {
             printf("[ ");
             value_print(*slot);
@@ -54,21 +86,49 @@ static VmInterpretResult vm_run()
             value_print(arbitraryValue);
             printf("\n");
             break;
-        case OP_NEGATE:
+        case OP_NOT:
             arbitraryValue = vm_stack_pop();
-            vm_stack_push(-arbitraryValue);
+            vm_stack_push(bool_val(is_falsey(arbitraryValue)));
+            break;
+        case OP_NEGATE:
+            if (!IS_NUMBER(vm_stack_peek(0))) {
+                runtime_error("OPerand must be a number");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            arbitraryValue = vm_stack_pop();
+            vm_stack_push(number_val(-AS_NUMBER(arbitraryValue)));
             break;
         case OP_ADD:
-            BINARY_OP(+);
+            BINARY_OP(number_val, +);
             break;
         case OP_SUBTRACT:
-            BINARY_OP(-);
+            BINARY_OP(number_val, -);
             break;
         case OP_MULTIPLY:
-            BINARY_OP(*);
+            BINARY_OP(number_val, *);
             break;
         case OP_DIVIDE:
-            BINARY_OP(/);
+            BINARY_OP(number_val, /);
+            break;
+        case OP_NIL:
+            vm_stack_push(nil_val());
+            break;
+        case OP_TRUE:
+            vm_stack_push(bool_val(1));
+            break;
+        case OP_FALSE:
+            vm_stack_push(bool_val(0));
+            break;
+        case OP_EQUAL:
+            rightValue = vm_stack_pop();
+            leftValue = vm_stack_pop();
+            vm_stack_push(bool_val(values_equal(leftValue, rightValue)));
+            break;
+        case OP_GREATER:
+            BINARY_OP(bool_val, >);
+            break;
+        case OP_LESS:
+            BINARY_OP(bool_val, <);
             break;
         case OP_RETURN:
             arbitraryValue = vm_stack_pop();

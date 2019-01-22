@@ -3,9 +3,11 @@
 [![Build Status](https://travis-ci.org/jalalmostafa/clox.svg?branch=master)](https://travis-ci.org/jalalmostafa/clox)
 [![Build status](https://ci.appveyor.com/api/projects/status/xhuvod8r2je1juwd/branch/master?svg=true)](https://ci.appveyor.com/project/JalalMostafa/clox/branch/master)
 
-CLox is a cross-platform implementation of a tree-walk [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter and a virtual machine (soon!) in C89. Both modes use the same tokenizer that is available in `include/tokenizer.h` and `src/tokenizer.c`.
+CLox is a cross-platform implementation of a tree-walk [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter and a virtual machine (soon!) in C89.
 
-Progress: [Ch.18 Types of Values](http://craftinginterpreters.com/types-of-values.html)
+This implementation may be a little bit different than [the original Lox implementation](https://github.com/munificent/craftinginterpreters) in the sense of data structures, project structure, and minor algorithmic changes. Both CLox modes use the same tokenizer that is available in `include/tokenizer.h` and `src/tokenizer.c`.
+
+Next Chapter: [Ch.19 Strings](http://craftinginterpreters.com/strings.html)
 
 ## How to Run
 

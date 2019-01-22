@@ -2,6 +2,30 @@
 #include "mem.h"
 #include <stdio.h>
 
+Value bool_val(VmBoolean boolean)
+{
+    Value v;
+    v.type = VAL_BOOL;
+    v.as.boolean = boolean;
+    return v;
+}
+
+Value nil_val()
+{
+    Value v;
+    v.type = VAL_NIL;
+    v.as.number = 0;
+    return v;
+}
+
+Value number_val(VmNumber number)
+{
+    Value v;
+    v.type = VAL_NUMBER;
+    v.as.number = number;
+    return v;
+}
+
 void value_array_init(ValueArray* array)
 {
     array->count = 0;
@@ -27,6 +51,35 @@ void value_array_free(ValueArray* array)
     value_array_init(array);
 }
 
-void value_print(Value value) {
-    printf("%g", value);
+int values_equal(Value a, Value b)
+{
+    if (a.type != b.type) {
+        return 0;
+    }
+
+    switch (a.type) {
+    case VAL_BOOL:
+        return AS_BOOL(a) == AS_BOOL(b);
+    case VAL_NUMBER:
+        return AS_NUMBER(a) == AS_NUMBER(b);
+    case VAL_NIL:
+        return 1;
+    }
+
+    return 0;
+}
+
+void value_print(Value value)
+{
+    switch (value.type) {
+    case VAL_NUMBER:
+        printf("%g", AS_NUMBER(value));
+        break;
+    case VAL_BOOL:
+        printf(AS_BOOL(value) ? "true" : "false");
+        break;
+    case VAL_NIL:
+        printf("nil");
+        break;
+    }
 }

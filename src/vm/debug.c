@@ -11,6 +11,7 @@ void chunk_disassemble(Chunk* chunk, const char* name)
     for (offset = 0; offset < chunk->count;) {
         offset = chunk_disassemble_instruction(chunk, offset);
     }
+    printf("==============\n");
 }
 
 int chunk_disassemble_instruction(Chunk* chunk, int offset)
@@ -38,6 +39,20 @@ int chunk_disassemble_instruction(Chunk* chunk, int offset)
         return instruction_simple("OP_MULTIPLY", offset);
     case OP_DIVIDE:
         return instruction_simple("OP_DIVIDE", offset);
+    case OP_NIL:
+        return instruction_simple("OP_NIL", offset);
+    case OP_TRUE:
+        return instruction_simple("OP_TRUE", offset);
+    case OP_FALSE:
+        return instruction_simple("OP_FALSE", offset);
+    case OP_NOT:
+        return instruction_simple("OP_NOT", offset);
+    case OP_EQUAL:
+        return instruction_simple("OP_EQUAL", offset);
+    case OP_GREATER:
+        return instruction_simple("OP_GREATER", offset);
+    case OP_LESS:
+        return instruction_simple("OP_LESS", offset);
     default:
         printf("Unknow opcode %d\n", instruction);
         return offset + 1;

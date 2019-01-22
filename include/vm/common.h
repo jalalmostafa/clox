@@ -1,6 +1,7 @@
 #ifndef CLOX_COMMON
 #define CLOX_COMMON
 #include "includes/lox-config.h"
+#include <limits.h>
 
 typedef unsigned char Byte;
 
