@@ -1,11 +1,20 @@
-# clox
+# CLox
 
 [![Build Status](https://travis-ci.org/jalalmostafa/clox.svg?branch=master)](https://travis-ci.org/jalalmostafa/clox)
 [![Build status](https://ci.appveyor.com/api/projects/status/xhuvod8r2je1juwd/branch/master?svg=true)](https://ci.appveyor.com/project/JalalMostafa/clox/branch/master)
 
-clox is a cross-platform implementation of a tree-walk [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter and a virtual machine (soon!) in ANSI C.
+CLox is a cross-platform implementation of a tree-walk [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter and a virtual machine (soon!) in C89.
 
 Progress: [Ch.18 Types of Values](http://craftinginterpreters.com/types-of-values.html)
+
+## How to Run
+
+```bash
+`lox.exe <filename>` or just `lox.exe` to launch REPL interpreter.
+    --tree-walk    runs clox in tree walk mode
+    --vm           runs clox in bytecode mode (default)
+    --help         shows this help text
+```
 
 ## Coding Conventions
 

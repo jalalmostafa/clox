@@ -119,11 +119,10 @@ int main(int argc, const char* argv[])
 void usage(char* name)
 {
     header(name);
-    printf("`%s <filename>`\n", name);
-    printf("\t\t`%s` to launch REPL interpreter.\n", name);
-    printf("\t\t--tree-walk\t\truns clox in tree walk mode");
-    printf("\t\t--vm\t\truns clox in bytecode mode (default)");
-    printf("\t\t--help\t\tshows this help text");
+    printf("`%s <filename>` or just `%s` to launch REPL interpreter.\n", name, name);
+    printf("    --tree-walk    runs clox in tree walk mode\n");
+    printf("    --vm           runs clox in bytecode mode (default)\n");
+    printf("    --help         shows this help text\n");
 }
 
 void header(char* name)
