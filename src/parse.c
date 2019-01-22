@@ -474,14 +474,6 @@ static Stmt* print_statement(Node** node)
     return new_terminated_statement(node, STMT_PRINT, stmt);
 }
 
-static Stmt* unterminated_expression_statement(Node** node)
-{
-    Expr* expr = expression(node);
-    ExprStmt* stmt = (ExprStmt*)alloc(sizeof(ExprStmt));
-    stmt->expr = expr;
-    return new_statement(STMT_EXPR, stmt);
-}
-
 static Stmt* expression_statement(Node** node)
 {
     Expr* expr = expression(node);
