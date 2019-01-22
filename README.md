@@ -5,7 +5,7 @@
 
 CLox is a cross-platform implementation of a tree-walk [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter and a virtual machine (soon!) in C89.
 
-This implementation may be a little bit different than [the original Lox implementation](https://github.com/munificent/craftinginterpreters) in the sense of data structures, project structure, and minor algorithmic changes. Both CLox modes use the same tokenizer that is available in `include/tokenizer.h` and `src/tokenizer.c`.
+This implementation may be a little bit different than [the original Lox implementation](https://github.com/munificent/craftinginterpreters) in the sense of data structures, project structure, and minor algorithmic changes. For example, both CLox modes use the same tokenizer that is available in `include/tokenizer.h` and `src/tokenizer.c`.
 
 Next Chapter: [Ch.19 Strings](http://craftinginterpreters.com/strings.html)
 
