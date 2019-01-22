@@ -3,7 +3,7 @@
 #include "vm/debug.h"
 #include <stdio.h>
 
-VM vm;
+static VM vm;
 
 static void vm_stack_reset()
 {
@@ -21,7 +21,7 @@ static Value vm_stack_pop()
     return *--vm.stackTop;
 }
 
-static VmInterpretResult run()
+static VmInterpretResult vm_run()
 {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
@@ -101,6 +101,22 @@ void vm_free()
 
 VmInterpretResult vm_interpret(const char* code)
 {
-    compile(code);
-    return INTERPRET_OK;
+    Chunk chunk;
+    VmInterpretResult result;
+
+    chunk_init(&chunk);
+    if (!compile(code, &chunk)) {
+        chunk_free(&chunk);
+        return INTERPRET_COMPILE_ERROR;
+    }
+
+    vm_init();
+    vm.chunk = &chunk;
+    vm.ip = vm.chunk->code;
+
+    result = vm_run();
+
+    chunk_free(&chunk);
+    vm_free();
+    return result;
 }

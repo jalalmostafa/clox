@@ -16,7 +16,6 @@
 			"request": "launch",
 			"program": "${workspaceFolder}\\bin\\Debug\\lox.exe",
 			"args": [
-				"${workspaceFolder}\\examples\\read_from_stdin.lox",
                 "--vm"
 			],
 			"stopAtEntry": false,

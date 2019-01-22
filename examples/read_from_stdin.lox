@@ -1,2 +1,3 @@
+print "Write a value to stdin";
 var a = read();
 print a;

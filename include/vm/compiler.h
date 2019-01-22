@@ -1,6 +1,8 @@
 #ifndef CLOX_COMPILER
 #define CLOX_COMPILER
 
-void compiler(const char* code);
+#include "vm/chunk.h"
+
+int compile(const char* code, Chunk* chunk);
 
 #endif

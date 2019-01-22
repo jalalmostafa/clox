@@ -5,7 +5,7 @@
 
 clox is a cross-platform implementation of a tree-walk [lox](http://craftinginterpreters.com/the-lox-language.html) interpreter and a virtual machine (soon!) in ANSI C.
 
-Progress: [Ch.16 Scanning on Demand](http://craftinginterpreters.com/scanning-on-demand.html)
+Progress: [Ch.18 Types of Values](http://craftinginterpreters.com/types-of-values.html)
 
 ## Coding Conventions
 

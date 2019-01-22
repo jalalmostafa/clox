@@ -213,36 +213,3 @@ void run_vm_file(const char* code)
         exit(70);
     }
 }
-
-void vm_chunk_test()
-{
-    int constantIdx;
-    Chunk chunk;
-    vm_init();
-    chunk_init(&chunk);
-
-    constantIdx = chunk_constants_add(&chunk, 1.2);
-    chunk_write(&chunk, OP_CONSTANT, 1);
-    chunk_write(&chunk, constantIdx, 1);
-
-    constantIdx = chunk_constants_add(&chunk, 3.4);
-    chunk_write(&chunk, OP_CONSTANT, 123);
-    chunk_write(&chunk, constantIdx, 123);
-
-    chunk_write(&chunk, OP_ADD, 123);
-
-    constantIdx = chunk_constants_add(&chunk, 5.6);
-    chunk_write(&chunk, OP_CONSTANT, 123);
-    chunk_write(&chunk, constantIdx, 123);
-
-    chunk_write(&chunk, OP_DIVIDE, 123);
-
-    chunk_write(&chunk, OP_NEGATE, 1);
-
-    chunk_write(&chunk, OP_RETURN, 2);
-
-    vm_interpret(&chunk);
-    chunk_disassemble(&chunk, "Test Chunk");
-    vm_free();
-    chunk_free(&chunk);
-}
