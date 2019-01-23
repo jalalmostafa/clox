@@ -11,7 +11,10 @@ typedef struct vm {
     Byte* ip;
     Value stack[STACK_MAX];
     Value* stackTop;
+    VmObject* objects;
 } VM;
+
+extern VM vm;
 
 typedef enum vm_interpret_result {
     INTERPRET_OK,

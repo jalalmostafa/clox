@@ -4,11 +4,12 @@
 #include "vm/value.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 static void runtime_error(const char* format, ...);
 static VmBoolean is_falsey(Value value);
 
-static VM vm;
+VM vm;
 
 static void vm_stack_reset()
 {
@@ -47,6 +48,22 @@ static void runtime_error(const char* format, ...)
 static VmBoolean is_falsey(Value value)
 {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
+static void vmstring_concatenate()
+{
+    VmString* b = AS_STRING(vm_stack_pop());
+    VmString* a = AS_STRING(vm_stack_pop());
+    VmString* result = NULL;
+    int length = a->length + b->length;
+    char* chars = (char*)alloc(length + 1);
+
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, b->chars, b->length);
+    chars[length] = 0;
+
+    result = vmstring_take(chars, length);
+    vm_stack_push(object_val((VmObject*)result));
 }
 
 static VmInterpretResult vm_run()
@@ -99,7 +116,16 @@ static VmInterpretResult vm_run()
             vm_stack_push(number_val(-AS_NUMBER(arbitraryValue)));
             break;
         case OP_ADD:
-            BINARY_OP(number_val, +);
+            if (IS_STRING(vm_stack_peek(0)) && IS_STRING(vm_stack_peek(1))) {
+                vmstring_concatenate();
+            } else if (IS_NUMBER(vm_stack_peek(0)) && IS_NUMBER(vm_stack_peek(1))) {
+                right = AS_NUMBER(vm_stack_pop());
+                left = AS_NUMBER(vm_stack_pop());
+                vm_stack_push(number_val(left + right));
+            } else {
+                runtime_error("Operands must be two numbers or two strings.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
             break;
         case OP_SUBTRACT:
             BINARY_OP(number_val, -);
@@ -149,6 +175,7 @@ void vm_init()
 {
     vm.chunk = NULL;
     vm.ip = NULL;
+    vm.objects = NULL;
     vm_stack_reset();
 }
 
@@ -157,6 +184,7 @@ void vm_free()
     vm.chunk = NULL;
     vm.ip = NULL;
     vm_stack_reset();
+    objects_free();
 }
 
 VmInterpretResult vm_interpret(const char* code)

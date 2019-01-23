@@ -2,6 +2,7 @@
 #include "ds/list.h"
 #include "tokenizer.h"
 #include "vm/common.h"
+#include "vm/vm.h"
 #ifdef DEBUG_PRINT_CODE
 #include "vm/debug.h"
 #endif
@@ -9,6 +10,7 @@
 #include <string.h>
 
 static void literal();
+static void string();
 static void number();
 static void binary();
 static void unary();
@@ -70,7 +72,7 @@ ParseRule rules[] = {
     { NULL, binary, PREC_COMPARISON }, // TOKEN_LESS
     { NULL, binary, PREC_COMPARISON }, // TOKEN_LESS_EQUAL
     { NULL, NULL, PREC_NONE }, // TOKEN_IDENTIFIER
-    { NULL, NULL, PREC_NONE }, // TOKEN_STRING
+    { string, NULL, PREC_NONE }, // TOKEN_STRING
     { number, NULL, PREC_NONE }, // TOKEN_NUMBER
     { NULL, NULL, PREC_AND }, // TOKEN_AND
     { NULL, NULL, PREC_NONE }, // TOKEN_CLASS
@@ -267,6 +269,46 @@ static void literal()
     default:
         return;
     }
+}
+
+static VmObject* new_vmobject(size_t size, VmObjectType type)
+{
+    VmObject* object = (VmObject*)reallocate(NULL, 0, size);
+    object->type = type;
+    object->next = vm.objects;
+    vm.objects = object;
+    return object;
+}
+
+#define ALLOC_OBJECT(type, objectType) ((type*)new_vmobject(sizeof(type), (objectType)))
+
+static VmString* new_vmstring(char* chars, int length)
+{
+    VmString* string = ALLOC_OBJECT(VmString, OBJECT_STRING);
+    string->chars = chars;
+    string->length = length;
+    return string;
+}
+
+VmString* vmstring_copy(const char* chars, int length)
+{
+    char* heapChars = (char*)alloc(length + 1);
+    memcpy(heapChars, chars, length);
+    heapChars[length] = 0;
+    return new_vmstring(heapChars, length);
+}
+
+VmString* vmstring_take(char* chars, int length)
+{
+    return new_vmstring(chars, length);
+}
+
+static void string()
+{
+    Token* token = (Token*)parser.previous->data;
+    VmString* string = vmstring_copy(token->literal, strlen(token->literal));
+    Value stringValue = object_val((VmObject*)string);
+    emit_constant(stringValue);
 }
 
 static void number()
