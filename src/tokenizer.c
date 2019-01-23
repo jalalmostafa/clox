@@ -185,7 +185,7 @@ Tokenization toknzr(const char* code, int verbose)
             } else {
                 literal = (char*)alloc(current - start);
                 memcpy(literal, &(code[start + 1]), current - start);
-                literal[length - 1] = '\0';
+                literal[current - start - 1] = 0;
                 if (literal != NULL) {
                     tokn = token(TOKEN_STRING, literal, line, current, literal);
                 }
