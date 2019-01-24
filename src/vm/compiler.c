@@ -2,6 +2,7 @@
 #include "ds/list.h"
 #include "tokenizer.h"
 #include "vm/common.h"
+#include "vm/table.h"
 #include "vm/vm.h"
 #ifdef DEBUG_PRINT_CODE
 #include "vm/debug.h"
@@ -282,25 +283,55 @@ static VmObject* new_vmobject(size_t size, VmObjectType type)
 
 #define ALLOC_OBJECT(type, objectType) ((type*)new_vmobject(sizeof(type), (objectType)))
 
-static VmString* new_vmstring(char* chars, int length)
+static Hash hash_string(const char* string, int length)
+{
+    unsigned int hash = 2166136261u;
+    int i;
+
+    for (i = 0; i < length; i++) {
+        hash ^= string[i];
+        hash *= 16777619;
+    }
+
+    return hash;
+}
+
+static VmString* new_vmstring(char* chars, int length, Hash hash)
 {
     VmString* string = ALLOC_OBJECT(VmString, OBJECT_STRING);
     string->chars = chars;
     string->length = length;
+    string->hash = hash;
+    table_set(&vm.strings, string, nil_val());
     return string;
 }
 
 VmString* vmstring_copy(const char* chars, int length)
 {
-    char* heapChars = (char*)alloc(length + 1);
+    char* heapChars = NULL;
+    Hash hash = hash_string(chars, length);
+    VmString* interned = table_find_string(&vm.strings, chars, length, hash);
+
+    if (interned != NULL) {
+        return interned;
+    }
+
+    heapChars = (char*)alloc(length + 1);
     memcpy(heapChars, chars, length);
     heapChars[length] = 0;
-    return new_vmstring(heapChars, length);
+    return new_vmstring(heapChars, length, hash);
 }
 
 VmString* vmstring_take(char* chars, int length)
 {
-    return new_vmstring(chars, length);
+    Hash hash = hash_string(chars, length);
+    VmString* interned = table_find_string(&vm.strings, chars, length, hash);
+
+    if (interned != NULL) {
+        return interned;
+    }
+
+    return new_vmstring(chars, length, hash);
 }
 
 static void string()

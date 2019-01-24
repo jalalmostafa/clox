@@ -1,6 +1,8 @@
 #ifndef CLOX_VALUE
 #define CLOX_VALUE
 
+#include "vm/common.h"
+
 typedef enum vm_object_type {
     OBJECT_STRING
 } VmObjectType;
@@ -16,6 +18,7 @@ typedef struct vm_string {
     struct vm_object object;
     int length;
     char* chars;
+    Hash hash;
 } VmString;
 
 typedef enum value_type {

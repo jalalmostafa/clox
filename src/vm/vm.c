@@ -1,6 +1,7 @@
 #include "vm/vm.h"
 #include "vm/compiler.h"
 #include "vm/debug.h"
+#include "vm/table.h"
 #include "vm/value.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -177,6 +178,7 @@ void vm_init()
     vm.ip = NULL;
     vm.objects = NULL;
     vm_stack_reset();
+    table_init(&vm.strings);
 }
 
 void vm_free()
@@ -185,6 +187,7 @@ void vm_free()
     vm.ip = NULL;
     vm_stack_reset();
     objects_free();
+    table_free(&vm.strings);
 }
 
 VmInterpretResult vm_interpret(const char* code)

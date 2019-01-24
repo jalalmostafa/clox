@@ -72,7 +72,7 @@ int object_equal(Value a, Value b)
     case OBJECT_STRING:
         s1 = AS_STRING(a);
         s2 = AS_STRING(b);
-        return s1->length == s2->length && memcmp(s1, s2, sizeof(VmString));
+        return s1 == s2;
     }
 
     return 0;

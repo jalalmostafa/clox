@@ -4,6 +4,7 @@
 #include <limits.h>
 
 typedef unsigned char Byte;
+typedef unsigned int Hash;
 
 #define BYTE_MAX UCHAR_MAX
 
