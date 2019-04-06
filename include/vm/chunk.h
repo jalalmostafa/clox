@@ -21,7 +21,11 @@ typedef enum clox_opcode {
     OP_SUBTRACT,
     OP_MULTIPLY,
     OP_DIVIDE,
-    OP_PRINT
+    OP_PRINT,
+    OP_POP,
+    OP_DEFINE_GLOBAL,
+    OP_GET_GLOBAL,
+    OP_SET_GLOBAL
 } OpCode;
 
 typedef struct clox_chunk {

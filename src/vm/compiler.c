@@ -10,24 +10,31 @@
 #include <stdio.h>
 #include <string.h>
 
-static void literal();
-static void string();
-static void number();
-static void binary();
-static void unary();
-static void grouping();
+static void variable(int canAssign);
+static void literal(int canAssign);
+static void string(int canAssign);
+static void number(int canAssign);
+static void binary(int canAssign);
+static void unary(int canAssign);
+static void grouping(int canAssign);
 static void expression();
 
+static void var_declaration();
 static void declaration();
 static void statement();
 static void print_statement();
 static void expression_statement();
 
-static check(TokenType type);
+static int check(TokenType type);
 static int match(TokenType type);
 static void advance();
 static void error(const char* message);
 static void error_at(Node* node, const char* message);
+
+static Byte identifier_constant(Node* node);
+static Byte variable_parse(const char* message);
+static void variable_define(Byte id);
+static void named_variable(Node* node, int canAssign);
 
 typedef struct vm_parser {
     Node* current;
@@ -51,7 +58,7 @@ typedef enum {
     PREC_PRIMARY
 } Precedence;
 
-typedef void (*ParseFn)();
+typedef void (*ParseFn)(int canAssign);
 
 typedef struct {
     ParseFn prefix;
@@ -79,7 +86,7 @@ ParseRule rules[] = {
     { NULL, binary, PREC_COMPARISON }, // TOKEN_GREATER_EQUAL
     { NULL, binary, PREC_COMPARISON }, // TOKEN_LESS
     { NULL, binary, PREC_COMPARISON }, // TOKEN_LESS_EQUAL
-    { NULL, NULL, PREC_NONE }, // TOKEN_IDENTIFIER
+    { variable, NULL, PREC_NONE }, // TOKEN_IDENTIFIER
     { string, NULL, PREC_NONE }, // TOKEN_STRING
     { number, NULL, PREC_NONE }, // TOKEN_NUMBER
     { NULL, NULL, PREC_AND }, // TOKEN_AND
@@ -115,6 +122,7 @@ static void prec_parse(Precedence prec)
 {
     ParseFn prefixRule, infixRule;
     Token* token = NULL;
+    int canAssign = 0;
 
     advance();
     token = (Token*)parser.previous->data;
@@ -125,16 +133,53 @@ static void prec_parse(Precedence prec)
         return;
     }
 
-    prefixRule();
+    canAssign = prec <= PREC_ASSIGNMENT;
+
+    prefixRule(canAssign);
 
     while (prec <= parse_rule(((Token*)parser.current->data)->type)->precedence) {
         advance();
         infixRule = parse_rule(((Token*)parser.previous->data)->type)->infix;
-        infixRule();
+        infixRule(canAssign);
+    }
+
+    if (canAssign && match(TOKEN_EQUAL)) {
+        error("Invalid assignment target.");
+        expression();
     }
 }
 
-static check(TokenType type)
+static void synchronize()
+{
+    parser.panicMode = 0;
+    TokenType currentType = ((Token*)parser.current->data)->type;
+    TokenType prevType = ((Token*)parser.previous->data)->type;
+
+    while (currentType != TOKEN_ENDOFFILE) {
+        if (prevType == TOKEN_SEMICOLON)
+            return;
+
+        switch (currentType) {
+        case TOKEN_CLASS:
+        case TOKEN_FUN:
+        case TOKEN_VAR:
+        case TOKEN_FOR:
+        case TOKEN_IF:
+        case TOKEN_WHILE:
+        case TOKEN_PRINT:
+        case TOKEN_RETURN:
+            return;
+
+        default:
+            // Do nothing.
+            ;
+        }
+
+        advance();
+    }
+}
+
+static int check(TokenType type)
 {
     Token* token = (Token*)parser.current->data;
     return token->type == type;
@@ -277,7 +322,7 @@ static void expression()
     prec_parse(PREC_ASSIGNMENT);
 }
 
-static void literal()
+static void literal(int canAssign)
 {
     Token* token = (Token*)parser.previous->data;
     switch (token->type) {
@@ -357,7 +402,23 @@ VmString* vmstring_take(char* chars, int length)
     return new_vmstring(chars, length, hash);
 }
 
-static void string()
+static void variable(int canAssign)
+{
+    named_variable(parser.previous, canAssign);
+}
+
+static void named_variable(Node* node, int canAssign)
+{
+    Byte arg = identifier_constant(node);
+    if (canAssign && match(TOKEN_EQUAL)) {
+        expression();
+        emit_bytes(OP_SET_GLOBAL, arg);
+    } else {
+        emit_bytes(OP_GET_GLOBAL, arg);
+    }
+}
+
+static void string(int canAssign)
 {
     Token* token = (Token*)parser.previous->data;
     VmString* string = vmstring_copy(token->literal, strlen(token->literal));
@@ -365,20 +426,20 @@ static void string()
     emit_constant(stringValue);
 }
 
-static void number()
+static void number(int canAssign)
 {
     Token* token = (Token*)parser.previous->data;
     double value = strtod(token->lexeme, NULL);
     emit_constant(number_val(value));
 }
 
-static void grouping()
+static void grouping(int canAssign)
 {
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void unary()
+static void unary(int canAssign)
 {
     Token* token = (Token*)parser.previous->data;
     TokenType operatorType = token->type;
@@ -397,7 +458,7 @@ static void unary()
     }
 }
 
-static void binary()
+static void binary(int canAssign)
 {
     Token* token = (Token*)parser.previous->data;
     TokenType operatorType = token->type;
@@ -450,6 +511,9 @@ static void print_statement()
 
 static void expression_statement()
 {
+    expression();
+    emit_byte(OP_POP);
+    consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
 }
 
 static void statement()
@@ -461,9 +525,49 @@ static void statement()
     }
 }
 
+static Byte identifier_constant(Node* node)
+{
+    Token* token = (Token*)node->data;
+    VmString* identifier = vmstring_copy(token->lexeme, strlen(token->lexeme));
+    return make_constant(object_val((VmObject*)identifier));
+}
+
+static void variable_define(Byte variableId)
+{
+    emit_bytes(OP_DEFINE_GLOBAL, variableId);
+}
+
+static Byte variable_parse(const char* message)
+{
+    consume(TOKEN_IDENTIFIER, message);
+    return identifier_constant(parser.previous);
+}
+
+static void var_declaration()
+{
+    Byte global = variable_parse("Expect variable name.");
+
+    if (match(TOKEN_EQUAL)) {
+        expression();
+    } else {
+        emit_byte(OP_NIL);
+    }
+    consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+
+    variable_define(global);
+}
+
 static void declaration()
 {
-    statement();
+    if (match(TOKEN_VAR)) {
+        var_declaration();
+    } else {
+        statement();
+    }
+
+    if (parser.panicMode) {
+        synchronize();
+    }
 }
 
 int compile(const char* code, Chunk* chunk)
@@ -477,8 +581,6 @@ int compile(const char* code, Chunk* chunk)
     parser.previous = NULL;
     parser.hadError = 0;
     parser.panicMode = 0;
-
-    // expression();
 
     while (!match(TOKEN_ENDOFFILE)) {
         declaration();

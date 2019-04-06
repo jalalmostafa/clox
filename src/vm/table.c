@@ -145,7 +145,7 @@ VmString* table_find_string(Table* table, const char* chars, int length, Hash ha
     unsigned int index;
     Entry* entry = NULL;
 
-    if (table == NULL) {
+    if (table == NULL || table->entries == NULL) {
         return NULL;
     }
 

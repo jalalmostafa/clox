@@ -71,6 +71,7 @@ static VmInterpretResult vm_run()
 {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op)                                            \
     do {                                                                    \
         if (!IS_NUMBER(vm_stack_peek(0)) || !IS_NUMBER(vm_stack_peek(1))) { \
@@ -85,6 +86,7 @@ static VmInterpretResult vm_run()
     Byte instruction;
     Value arbitraryValue, leftValue, rightValue, *slot = NULL;
     VmNumber left, right;
+    VmString* name = NULL;
 
     for (;;) {
 #ifdef DEBUG_EXECUTION_TRACE
@@ -164,6 +166,30 @@ static VmInterpretResult vm_run()
             value_print(arbitraryValue);
             printf("\n");
             break;
+        case OP_POP:
+            vm_stack_pop();
+            break;
+        case OP_DEFINE_GLOBAL:
+            name = READ_STRING();
+            arbitraryValue = vm_stack_peek(0);
+            table_set(&vm.globals, name, arbitraryValue);
+            vm_stack_pop();
+            break;
+        case OP_GET_GLOBAL:
+            name = READ_STRING();
+            if (!table_get(&vm.globals, name, &arbitraryValue)) {
+                runtime_error("Undefined variable at '%s'", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            vm_stack_push(arbitraryValue);
+            break;
+        case OP_SET_GLOBAL:
+            VmString* name = READ_STRING();
+            if (table_set(&vm.globals, name, vm_stack_peek(0))) {
+                runtime_error("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
         default:
             return INTERPRET_COMPILE_ERROR;
         }
@@ -181,6 +207,7 @@ void vm_init()
     vm.objects = NULL;
     vm_stack_reset();
     table_init(&vm.strings);
+    table_init(&vm.globals);
 }
 
 void vm_free()
@@ -190,6 +217,7 @@ void vm_free()
     vm_stack_reset();
     objects_free();
     table_free(&vm.strings);
+    table_free(&vm.globals);
 }
 
 VmInterpretResult vm_interpret(const char* code)
@@ -203,13 +231,12 @@ VmInterpretResult vm_interpret(const char* code)
         return INTERPRET_COMPILE_ERROR;
     }
 
-    vm_init();
     vm.chunk = &chunk;
     vm.ip = vm.chunk->code;
 
     result = vm_run();
 
-    chunk_free(&chunk);
-    vm_free();
+    chunk_free(vm.chunk);
+
     return result;
 }

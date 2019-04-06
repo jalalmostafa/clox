@@ -18,7 +18,13 @@ typedef struct argvalues {
     int error;
 } ArgValues;
 
+typedef enum {
+    MODE_TREEWALK,
+    MODE_VM
+} Mode;
+
 typedef struct runnable_mode {
+    Mode mode;
     void (*codeRunner)(const char* code);
 } RunnableMode;
 
@@ -42,12 +48,12 @@ ArgValues argparse(int argc, const char* argv[])
         values.error = 1;
     } else if (argc == 3) {
         values.repl = 0;
-        values.filename = (char*)argv[1];
-        if (strncmp(argv[2], "--tree-walk", 12) == 0) {
+        values.filename = (char*)argv[2];
+        if (strncmp(argv[1], "--tree-walk", 12) == 0) {
             values.treewalk = 1;
-        } else if (strncmp(argv[2], "--vm", 5) == 0) {
+        } else if (strncmp(argv[1], "--vm", 5) == 0) {
             values.treewalk = 0;
-        } else if (strncmp(argv[2], "--help", 7) == 0) {
+        } else if (strncmp(argv[1], "--help", 7) == 0) {
             values.help = 1;
         } else {
             values.error = 1;
@@ -96,15 +102,32 @@ int main(int argc, const char* argv[])
     }
 
     header(name);
+    mode.mode = values.treewalk ? MODE_TREEWALK : MODE_VM;
     if (values.repl) {
         mode.codeRunner = values.treewalk ? run_treewalk_chunk : run_vm_chunk;
+
+        switch (mode.mode) {
+        case MODE_TREEWALK:
+            break;
+        case MODE_VM:
+            vm_init();
+        }
+
         printf("Type 'exit()' to exit\n");
         for (line = read_line("> "); line != NULL && strcmp(line, "exit()\n") != 0; line = read_line("> ")) {
             mode.codeRunner(line);
             fr(line);
         }
+
+        switch (mode.mode) {
+        case MODE_TREEWALK:
+            break;
+        case MODE_VM:
+            vm_free();
+            break;
+        }
     } else {
-        buf = read_file(argv[1]);
+        buf = read_file(values.filename);
         if (buf == NULL) {
             fprintf(stderr, "%s\n", strerror(errno));
             exit(74);
@@ -114,7 +137,8 @@ int main(int argc, const char* argv[])
         }
         fr(buf);
     }
-
+    while (1)
+        ;
     return EXIT_SUCCESS;
 }
 
@@ -204,7 +228,11 @@ void run_vm_chunk(const char* code)
 
 void run_vm_file(const char* code)
 {
-    VmInterpretResult result = vm_interpret(code);
+    VmInterpretResult result;
+
+    vm_init();
+    result = vm_interpret(code);
+    vm_free();
 
     if (result == INTERPRET_COMPILE_ERROR) {
         exit(65);
