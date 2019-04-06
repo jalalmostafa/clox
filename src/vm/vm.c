@@ -158,10 +158,12 @@ static VmInterpretResult vm_run()
             BINARY_OP(bool_val, <);
             break;
         case OP_RETURN:
+            return INTERPRET_OK;
+        case OP_PRINT:
             arbitraryValue = vm_stack_pop();
             value_print(arbitraryValue);
             printf("\n");
-            return INTERPRET_OK;
+            break;
         default:
             return INTERPRET_COMPILE_ERROR;
         }

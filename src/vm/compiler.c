@@ -18,6 +18,13 @@ static void unary();
 static void grouping();
 static void expression();
 
+static void declaration();
+static void statement();
+static void print_statement();
+static void expression_statement();
+
+static check(TokenType type);
+static int match(TokenType type);
 static void advance();
 static void error(const char* message);
 static void error_at(Node* node, const char* message);
@@ -125,6 +132,22 @@ static void prec_parse(Precedence prec)
         infixRule = parse_rule(((Token*)parser.previous->data)->type)->infix;
         infixRule();
     }
+}
+
+static check(TokenType type)
+{
+    Token* token = (Token*)parser.current->data;
+    return token->type == type;
+}
+
+static int match(TokenType type)
+{
+    if (!check(type)) {
+        return 0;
+    }
+
+    advance();
+    return 1;
 }
 
 static void error_at(Node* node, const char* message)
@@ -418,6 +441,31 @@ static void binary()
     }
 }
 
+static void print_statement()
+{
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+    emit_byte(OP_PRINT);
+}
+
+static void expression_statement()
+{
+}
+
+static void statement()
+{
+    if (match(TOKEN_PRINT)) {
+        print_statement();
+    } else {
+        expression_statement();
+    }
+}
+
+static void declaration()
+{
+    statement();
+}
+
 int compile(const char* code, Chunk* chunk)
 {
     Tokenization toknz = toknzr(code, 0);
@@ -430,7 +478,11 @@ int compile(const char* code, Chunk* chunk)
     parser.hadError = 0;
     parser.panicMode = 0;
 
-    expression();
+    // expression();
+
+    while (!match(TOKEN_ENDOFFILE)) {
+        declaration();
+    }
 
     compiler_end();
     toknzr_destroy(toknz);

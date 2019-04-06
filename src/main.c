@@ -52,17 +52,19 @@ ArgValues argparse(int argc, const char* argv[])
         } else {
             values.error = 1;
         }
-    } else if (argc == 2) {
+    } else {
         values.repl = 1;
-        if (strncmp(argv[1], "--tree-walk", 12) == 0) {
-            values.treewalk = 1;
-        } else if (strncmp(argv[1], "--vm", 5) == 0) {
-            values.treewalk = 0;
-        } else if (strncmp(argv[1], "--help", 7) == 0) {
-            values.help = 1;
-        } else {
-            values.repl = 0;
-            values.filename = (char*)argv[1];
+        if (argc == 2) {
+            if (strncmp(argv[1], "--tree-walk", 12) == 0) {
+                values.treewalk = 1;
+            } else if (strncmp(argv[1], "--vm", 5) == 0) {
+                values.treewalk = 0;
+            } else if (strncmp(argv[1], "--help", 7) == 0) {
+                values.help = 1;
+            } else {
+                values.repl = 0;
+                values.filename = (char*)argv[1];
+            }
         }
     }
 

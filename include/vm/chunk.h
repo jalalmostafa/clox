@@ -20,7 +20,8 @@ typedef enum clox_opcode {
     OP_ADD,
     OP_SUBTRACT,
     OP_MULTIPLY,
-    OP_DIVIDE
+    OP_DIVIDE,
+    OP_PRINT
 } OpCode;
 
 typedef struct clox_chunk {

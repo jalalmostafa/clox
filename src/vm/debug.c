@@ -53,6 +53,8 @@ int chunk_disassemble_instruction(Chunk* chunk, int offset)
         return instruction_simple("OP_GREATER", offset);
     case OP_LESS:
         return instruction_simple("OP_LESS", offset);
+    case OP_PRINT:
+        return instruction_simple("OP_PRINT", offset);
     default:
         printf("Unknow opcode %d\n", instruction);
         return offset + 1;
