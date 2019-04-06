@@ -184,7 +184,7 @@ static VmInterpretResult vm_run()
             vm_stack_push(arbitraryValue);
             break;
         case OP_SET_GLOBAL:
-            VmString* name = READ_STRING();
+            name = READ_STRING();
             if (table_set(&vm.globals, name, vm_stack_peek(0))) {
                 runtime_error("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
