@@ -7,12 +7,12 @@ CLox is a cross-platform implementation of a tree-walk [lox](http://craftinginte
 
 This implementation may be a little bit different than [the original Lox implementation](https://github.com/munificent/craftinginterpreters) in the sense of data structures, project structure, and minor algorithmic changes. For example, both CLox modes use the same tokenizer that is available in `include/tokenizer.h` and `src/tokenizer.c`.
 
-Next Chapter: [Ch.21 Global Variables](http://craftinginterpreters.com/global-variables.html) _(unreleased to this date 24 Jan 2019)_
+Next Chapter: [Ch.22 Local Variables](http://craftinginterpreters.com/local-variables.html)
 
 ## How to Run
 
 ```bash
-`lox.exe <filename>` or just `lox.exe` to launch REPL interpreter.
+`lox.exe [--vm|--tree-walk] [filename]` or `lox.exe [--vm|--tree-walk]` to launch REPL interpreter.
     --tree-walk    runs clox in tree walk mode
     --vm           runs clox in bytecode mode (default)
     --help         shows this help text
