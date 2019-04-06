@@ -137,8 +137,6 @@ int main(int argc, const char* argv[])
         }
         fr(buf);
     }
-    while (1)
-        ;
     return EXIT_SUCCESS;
 }
 

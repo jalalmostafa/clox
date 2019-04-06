@@ -162,6 +162,6 @@ VmString* table_find_string(Table* table, const char* chars, int length, Hash ha
             return entry->key;
         }
 
-        index = (index + 1) & table->capacity;
+        index = (index + 1) % table->capacity;
     }
 }
