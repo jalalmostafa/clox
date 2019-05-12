@@ -31,6 +31,7 @@ static void advance();
 static void error(const char* message);
 static void error_at(Node* node, const char* message);
 
+static int identifier_equal(Token* a, Token* b);
 static Byte identifier_constant(Node* node);
 static Byte variable_parse(const char* message);
 static void variable_define(Byte id);
@@ -65,6 +66,19 @@ typedef struct {
     ParseFn infix;
     Precedence precedence;
 } ParseRule;
+
+typedef struct {
+    Token name;
+    int depth;
+} Local;
+
+typedef struct Compiler {
+    Local locals[BYTE_COUNT];
+    int localCount;
+    int scopeDepth;
+} VmCompiler;
+
+static int variable_local_resolve(VmCompiler* compiler, Token* name);
 
 ParseRule rules[] = {
     { grouping, NULL, PREC_CALL }, // TOKEN_LEFT_PAREN
@@ -113,6 +127,8 @@ static Chunk* compilingChunk;
 
 static VmParser parser;
 
+static VmCompiler* currentCompiler = NULL;
+
 static ParseRule* parse_rule(TokenType type)
 {
     return &rules[type];
@@ -151,9 +167,9 @@ static void prec_parse(Precedence prec)
 
 static void synchronize()
 {
-    parser.panicMode = 0;
     TokenType currentType = ((Token*)parser.current->data)->type;
     TokenType prevType = ((Token*)parser.previous->data)->type;
+    parser.panicMode = 0;
 
     while (currentType != TOKEN_ENDOFFILE) {
         if (prevType == TOKEN_SEMICOLON)
@@ -307,6 +323,14 @@ static void emit_return()
     emit_byte(OP_RETURN);
 }
 
+static void compiler_init(VmCompiler* compiler)
+{
+    memset(compiler, 0, sizeof(VmCompiler));
+    compiler->localCount = 0;
+    compiler->scopeDepth = 0;
+    currentCompiler = compiler;
+}
+
 static void compiler_end()
 {
     emit_return();
@@ -409,12 +433,23 @@ static void variable(int canAssign)
 
 static void named_variable(Node* node, int canAssign)
 {
-    Byte arg = identifier_constant(node);
+    Byte getOp, setOp;
+    Token* name = (Token*)node->data;
+    int arg = variable_local_resolve(currentCompiler, name);
+
+    if (arg != -1) {
+        getOp = OP_GET_LOCAL;
+        setOp = OP_SET_LOCAL;
+    } else {
+        arg = identifier_constant(node);
+        getOp = OP_GET_GLOBAL;
+        setOp = OP_SET_GLOBAL;
+    }
     if (canAssign && match(TOKEN_EQUAL)) {
         expression();
-        emit_bytes(OP_SET_GLOBAL, arg);
+        emit_bytes(setOp, (Byte)arg);
     } else {
-        emit_bytes(OP_GET_GLOBAL, arg);
+        emit_bytes(getOp, (Byte)arg);
     }
 }
 
@@ -516,10 +551,39 @@ static void expression_statement()
     consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
 }
 
+static void scope_begin()
+{
+    currentCompiler->scopeDepth++;
+}
+
+static void scope_end()
+{
+    currentCompiler->scopeDepth--;
+
+    while (currentCompiler->localCount > 0
+        && currentCompiler->locals[currentCompiler->localCount - 1].depth > currentCompiler->scopeDepth) {
+        emit_byte(OP_POP);
+        currentCompiler->localCount--;
+    }
+}
+
+static void block_statement()
+{
+    while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_ENDOFFILE)) {
+        declaration();
+    }
+
+    consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
+}
+
 static void statement()
 {
     if (match(TOKEN_PRINT)) {
         print_statement();
+    } else if (match(TOKEN_LEFT_BRACE)) {
+        scope_begin();
+        block_statement();
+        scope_end();
     } else {
         expression_statement();
     }
@@ -532,14 +596,101 @@ static Byte identifier_constant(Node* node)
     return make_constant(object_val((VmObject*)identifier));
 }
 
+static void variable_initialize()
+{
+    if (currentCompiler->scopeDepth == 0) {
+        return;
+    }
+
+    currentCompiler->locals[currentCompiler->localCount - 1].depth = currentCompiler->scopeDepth;
+}
+
 static void variable_define(Byte variableId)
 {
+    if (currentCompiler->scopeDepth > 0) {
+        variable_initialize();
+        return;
+    }
+
     emit_bytes(OP_DEFINE_GLOBAL, variableId);
+}
+
+static int identifier_equal(Token* a, Token* b)
+{
+    int aLength = a == NULL || a->lexeme == NULL ? 0 : strlen(a->lexeme),
+        bLength = b == NULL || b->lexeme == NULL ? 0 : strlen(b->lexeme);
+    if (aLength != bLength) {
+        return 0;
+    }
+
+    return memcmp(a->lexeme, b->lexeme, aLength) == 0;
+}
+
+static int variable_local_resolve(VmCompiler* compiler, Token* name)
+{
+    Local* local = NULL;
+    int i = 0;
+    for (i = compiler->localCount - 1; i >= 0; i--) {
+        local = &compiler->locals[i];
+        if (identifier_equal(name, &local->name)) {
+            if (local->depth == -1) {
+                error("Cannot read local variable in its own initializer.");
+            }
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+static void variable_local_add(Token name)
+{
+    Local* local = NULL;
+
+    if (currentCompiler->localCount == BYTE_COUNT) {
+        error("Too many local variables in function.");
+        return;
+    }
+
+    local = &currentCompiler->locals[currentCompiler->localCount++];
+    local->name = name;
+    local->depth = -1;
+}
+
+static void variable_declare()
+{
+    Local* local = NULL;
+    Token* name = NULL;
+    int i = 0;
+
+    if (currentCompiler->scopeDepth == 0) {
+        return;
+    }
+
+    name = (Token*)parser.previous->data;
+    for (i = currentCompiler->localCount - 1; i >= 0; i--) {
+        local = &currentCompiler->locals[i];
+
+        if (local->depth != -1 && local->depth < currentCompiler->scopeDepth) {
+            break;
+        }
+
+        if (identifier_equal(name, &local->name)) {
+            error("Variable with this name already declared in this scope.");
+        }
+    }
+    variable_local_add(*name);
 }
 
 static Byte variable_parse(const char* message)
 {
     consume(TOKEN_IDENTIFIER, message);
+
+    variable_declare();
+    if (currentCompiler->scopeDepth > 0) {
+        return 0;
+    }
+
     return identifier_constant(parser.previous);
 }
 
@@ -572,8 +723,12 @@ static void declaration()
 
 int compile(const char* code, Chunk* chunk)
 {
+    VmCompiler compiler;
     Tokenization toknz = toknzr(code, 0);
+#ifdef DEBUG_PRINT_CODE
     list_foreach(toknz.values, foreach_token);
+#endif
+    compiler_init(&compiler);
 
     compilingChunk = chunk;
     parser.last = toknz.values->last;

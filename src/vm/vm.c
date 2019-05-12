@@ -190,6 +190,14 @@ static VmInterpretResult vm_run()
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
+        case OP_GET_LOCAL:
+            instruction = READ_BYTE();
+            vm_stack_push(vm.stack[instruction]);
+            break;
+        case OP_SET_LOCAL:
+            instruction = READ_BYTE();
+            vm.stack[instruction] = vm_stack_peek(0);
+            break;
         default:
             return INTERPRET_COMPILE_ERROR;
         }
