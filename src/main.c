@@ -43,7 +43,7 @@ ArgValues argparse(int argc, const char* argv[])
 {
     ArgValues values;
     memset(&values, 0, sizeof(struct argvalues));
-    values.treewalk = 1;
+    values.treewalk = 0;
     if (argc > 3) {
         values.error = 1;
     } else if (argc == 3) {
