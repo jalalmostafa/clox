@@ -1,6 +1,7 @@
 #ifndef PARSE_H
 #define PARSE_H
 #include "tokenizer.h"
+#include <stdio.h>
 
 typedef enum expr_type_t {
     EXPR_BINARY = 1,
