@@ -70,6 +70,7 @@ static void vmstring_concatenate()
 static VmInterpretResult vm_run()
 {
 #define READ_BYTE() (*vm.ip++)
+#define READ_SHORT() (vm.ip += 2, (Short)((vm.ip[-2] << 8) | vm.ip[-1]))
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op)                                            \
@@ -83,6 +84,7 @@ static VmInterpretResult vm_run()
         vm_stack_push(valueType(left op right));                            \
     } while (0)
 
+    Short offset;
     Byte instruction;
     Value arbitraryValue, leftValue, rightValue, *slot = NULL;
     VmNumber left, right;
@@ -198,6 +200,20 @@ static VmInterpretResult vm_run()
             instruction = READ_BYTE();
             vm.stack[instruction] = vm_stack_peek(0);
             break;
+        case OP_JUMP_IF_FALSE:
+            offset = READ_SHORT();
+            if (is_falsey(vm_stack_peek(0))) {
+                vm.ip += offset;
+            }
+            break;
+        case OP_JUMP:
+            offset = READ_SHORT();
+            vm.ip += offset;
+            break;
+        case OP_LOOP:
+            offset = READ_SHORT();
+            vm.ip -= offset;
+            break;
         default:
             return INTERPRET_COMPILE_ERROR;
         }
@@ -205,6 +221,7 @@ static VmInterpretResult vm_run()
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_SHORT
 #undef BINARY_OP
 }
 

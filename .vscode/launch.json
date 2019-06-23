@@ -17,7 +17,7 @@
             "program": "${workspaceFolder}\\bin\\Debug\\lox.exe",
             "args": [
                 "--vm",
-                "${workspaceFolder}/examples/scopes.lox",
+                "${workspaceFolder}/examples/control-flow.lox",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
