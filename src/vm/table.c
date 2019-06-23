@@ -140,7 +140,7 @@ int table_delete(Table* table, VmString* key)
     return 1;
 }
 
-VmString* table_find_string(Table* table, const char* chars, int length, Hash hash)
+VmString* table_find_string(Table* table, const char* chars, size_t length, Hash hash)
 {
     unsigned int index;
     Entry* entry = NULL;

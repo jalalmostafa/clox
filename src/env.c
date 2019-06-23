@@ -48,7 +48,7 @@ static Object* read_do(List* args, void* decl, ExecutionEnvironment* closure, Fu
 {
     char* boolOrString = NULL;
     double* number = NULL;
-    int length = 0;
+    size_t length = 0;
     char input[LINEBUFSIZE];
     memset(input, 0, LINEBUFSIZE);
     fgets(input, LINEBUFSIZE, stdin);

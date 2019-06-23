@@ -6,7 +6,7 @@
 
 int compile(const char* code, Chunk* chunk);
 
-VmString* vmstring_take(char* chars, int length);
-VmString* vmstring_copy(const char* chars, int length);
+VmString* vmstring_take(char* chars, size_t length);
+VmString* vmstring_copy(const char* chars, size_t length);
 
 #endif

@@ -98,7 +98,7 @@ static Object* eval_expr(Expr* expr)
 Object* runtime_error(const char* format, Object** obj, int line, ...)
 {
     const char* runtimeError = line != -1 ? "Runtime Error (at Line %d): " : "Runtime Error: ";
-    int len = 0;
+    size_t len = 0;
     char buffer[LINEBUFSIZE];
     Object* temp = NULL;
     va_list fields;
@@ -130,7 +130,7 @@ void* visit_binary(Expr* expr)
     Object* result = NULL;
     double *lvalue = NULL, *rvalue = NULL;
     char* svalue = NULL;
-    int valueLengthRight = 0, valueLengthLeft = 0;
+    size_t valueLengthRight = 0, valueLengthLeft = 0;
 
     if (rObject == NULL || lObject == NULL) {
         return NULL;
@@ -783,7 +783,7 @@ void obj_destroy(Object* obj)
     }
 }
 
-Object* obj_new(ObjectType type, void* value, int valueSize)
+Object* obj_new(ObjectType type, void* value, size_t valueSize)
 {
     Object* obj = (Object*)alloc(sizeof(Object));
     obj->type = type;

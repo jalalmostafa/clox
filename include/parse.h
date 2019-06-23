@@ -52,7 +52,7 @@ typedef struct expression_variable_t {
 typedef struct expression_literal_t {
     void* value;
     LiteralType type;
-    int valueSize;
+    size_t valueSize;
 } LiteralExpr;
 
 typedef struct expression_assignmnt_t {

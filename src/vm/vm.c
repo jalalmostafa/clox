@@ -56,7 +56,7 @@ static void vmstring_concatenate()
     VmString* b = AS_STRING(vm_stack_pop());
     VmString* a = AS_STRING(vm_stack_pop());
     VmString* result = NULL;
-    int length = a->length + b->length;
+    size_t length = a->length + b->length;
     char* chars = (char*)alloc(length + 1);
 
     memcpy(chars, a->chars, a->length);

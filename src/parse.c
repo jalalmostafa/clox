@@ -63,7 +63,7 @@ static Expr* new_expr(ExpressionType type, void* realExpr)
     return expr;
 }
 
-static LiteralExpr* new_literal(void* value, LiteralType type, int size)
+static LiteralExpr* new_literal(void* value, LiteralType type, size_t size)
 {
     LiteralExpr* expr = (LiteralExpr*)alloc(sizeof(LiteralExpr));
     expr->value = value;

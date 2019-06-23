@@ -9,7 +9,7 @@
 
 static Token* token(TokenType type, char* literal, int line, int column, char* lexeme)
 {
-    int length = 0;
+    size_t length = 0;
     Token* tokn = (Token*)alloc(sizeof(Token));
     tokn->type = type;
     if (literal == NULL) {
@@ -51,7 +51,7 @@ static void toknzr_error(int line, int column, char c)
     puts(buf);
 }
 
-static int match_next(const char* code, char next, int length, int* current)
+static int match_next(const char* code, char next, size_t length, int* current)
 {
     if (current == NULL || (*current) > length) {
         return 0;
@@ -65,7 +65,7 @@ static int match_next(const char* code, char next, int length, int* current)
     return 1;
 }
 
-static char* read_number(const char* code, int codeLength, int* current)
+static char* read_number(const char* code, size_t codeLength, int* current)
 {
     char* literal = NULL;
     int start = *current, length = 0;
@@ -85,7 +85,7 @@ static char* read_number(const char* code, int codeLength, int* current)
     return literal;
 }
 
-static char* read_other(const char* code, int codeLength, int* current)
+static char* read_other(const char* code, size_t codeLength, int* current)
 {
     char* literal = NULL;
     int start = *current, length = 0;
@@ -105,7 +105,8 @@ Tokenization toknzr(const char* code, int verbose)
     char* literal = NULL;
     Token* tokn = NULL;
     TokenType type = TOKEN_ENDOFFILE;
-    int length = strlen(code), current = 0, start = 0, line = 1;
+    size_t length = strlen(code);
+    int current = 0, start = 0, line = 1;
     Tokenization toknz;
     toknz.values = list();
     toknz.lines = 0;

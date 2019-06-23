@@ -128,7 +128,8 @@ int dict_set(Dictionary* dict, const char* key, void* value)
 
 static unsigned int hash_code(const char* key)
 {
-    unsigned int hash = 0, i = 0, length = strlen(key);
+    unsigned int hash = 0, i = 0;
+    size_t length = strlen(key);
     for (i = 0; i < length; i++) {
         hash = 31 * hash + key[i];
     }

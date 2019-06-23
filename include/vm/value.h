@@ -16,7 +16,7 @@ typedef struct vm_object {
 
 typedef struct vm_string {
     struct vm_object object;
-    int length;
+    size_t length;
     char* chars;
     Hash hash;
 } VmString;

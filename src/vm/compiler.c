@@ -412,10 +412,10 @@ static VmObject* new_vmobject(size_t size, VmObjectType type)
 
 #define ALLOC_OBJECT(type, objectType) ((type*)new_vmobject(sizeof(type), (objectType)))
 
-static Hash hash_string(const char* string, int length)
+static Hash hash_string(const char* string, size_t length)
 {
     unsigned int hash = 2166136261u;
-    int i;
+    size_t i;
 
     for (i = 0; i < length; i++) {
         hash ^= string[i];
@@ -425,7 +425,7 @@ static Hash hash_string(const char* string, int length)
     return hash;
 }
 
-static VmString* new_vmstring(char* chars, int length, Hash hash)
+static VmString* new_vmstring(char* chars, size_t length, Hash hash)
 {
     VmString* string = ALLOC_OBJECT(VmString, OBJECT_STRING);
     string->chars = chars;
@@ -435,7 +435,7 @@ static VmString* new_vmstring(char* chars, int length, Hash hash)
     return string;
 }
 
-VmString* vmstring_copy(const char* chars, int length)
+VmString* vmstring_copy(const char* chars, size_t length)
 {
     char* heapChars = NULL;
     Hash hash = hash_string(chars, length);
@@ -451,7 +451,7 @@ VmString* vmstring_copy(const char* chars, int length)
     return new_vmstring(heapChars, length, hash);
 }
 
-VmString* vmstring_take(char* chars, int length)
+VmString* vmstring_take(char* chars, size_t length)
 {
     Hash hash = hash_string(chars, length);
     VmString* interned = table_find_string(&vm.strings, chars, length, hash);
@@ -771,7 +771,7 @@ static void variable_define(Byte variableId)
 
 static int identifier_equal(Token* a, Token* b)
 {
-    int aLength = a == NULL || a->lexeme == NULL ? 0 : strlen(a->lexeme),
+    size_t aLength = a == NULL || a->lexeme == NULL ? 0 : strlen(a->lexeme),
         bLength = b == NULL || b->lexeme == NULL ? 0 : strlen(b->lexeme);
     if (aLength != bLength) {
         return 0;

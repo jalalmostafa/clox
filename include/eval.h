@@ -18,7 +18,7 @@ typedef enum obj_type_t {
 typedef struct object_t {
     void* value;
     ObjectType type;
-    int valueSize;
+    size_t valueSize;
     char shallow;
     char propagateReturn;
 } Object;
@@ -61,7 +61,7 @@ int env_set_variable_value_at(ExecutionEnvironment* env, unsigned int order, con
 Object* env_get_variable_value_at(ExecutionEnvironment* env, unsigned int order, const char* variableName);
 
 void obj_destroy(Object* obj);
-Object* obj_new(ObjectType type, void* value, int valueSize);
+Object* obj_new(ObjectType type, void* value, size_t valueSize);
 char obj_likely(Object* obj);
 char obj_unlikely(Object* expr);
 int obj_force_destroy(KeyValuePair* pair);
