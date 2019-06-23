@@ -2,6 +2,7 @@
 #define CLOX_VALUE
 
 #include "vm/common.h"
+#include <stdio.h>
 
 typedef enum vm_object_type {
     OBJECT_STRING
