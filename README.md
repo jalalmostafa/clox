@@ -7,7 +7,7 @@ CLox is a cross-platform implementation of a tree-walk [lox](http://craftinginte
 
 This implementation may be a little bit different than [the original Lox implementation](https://github.com/munificent/craftinginterpreters) in the sense of data structures, project structure, and minor algorithmic changes. For example, both CLox modes use the same tokenizer that is available in `include/tokenizer.h` and `src/tokenizer.c`.
 
-Next Chapter: [Ch.23 Jumping Forward and Back](http://craftinginterpreters.com/jumping-forward-and-back.html)
+Next Chapter: [Ch.23 Jumping Forward and Back](http://craftinginterpreters.com/calls-and-functions.html)
 
 ## How to Run
 
