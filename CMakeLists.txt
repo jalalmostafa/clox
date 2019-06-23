@@ -4,8 +4,8 @@ project(lox)
 set(VERSION "0.0.1")
 
 set(
-    CXX_STANDARD
-    89
+    CMAKE_CXX_STANDARD
+    90
 )
 
 set (
