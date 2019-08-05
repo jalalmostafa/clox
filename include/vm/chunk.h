@@ -6,7 +6,7 @@
 #include "vm/value.h"
 #include <stdlib.h>
 
-typedef enum clox_opcode {
+typedef enum opcode {
     OP_RETURN,
     OP_CONSTANT,
     OP_NIL,
@@ -30,16 +30,9 @@ typedef enum clox_opcode {
     OP_GET_GLOBAL,
     OP_SET_GLOBAL,
     OP_GET_LOCAL,
-    OP_SET_LOCAL
+    OP_SET_LOCAL,
+    OP_CALL
 } OpCode;
-
-typedef struct clox_chunk {
-    int capacity;
-    int count;
-    Byte* code;
-    ValueArray constants;
-    int* lines;
-} Chunk;
 
 void chunk_init(Chunk* chunk);
 

@@ -106,6 +106,16 @@ static void object_print(Value value)
     case OBJECT_STRING:
         printf("%s", AS_CSTRING(value));
         break;
+    case OBJECT_FUNCTION:
+        if (AS_FUNCTION(value)->name != NULL) {
+            printf("<fn %s>", AS_FUNCTION(value)->name->chars);
+        } else {
+            printf("<script>");
+        }
+        break;
+    case OBJECT_NATIVE:
+        printf("<native fn>");
+        break;
     }
 }
 
@@ -127,14 +137,29 @@ void value_print(Value value)
     }
 }
 
+static void vmstring_free(VmString* string)
+{
+    FREE_ARRAY(char, string->chars, string->length + 1);
+    FREE(VmString, string);
+}
+
 static void object_free(VmObject* object)
 {
     VmString* string = NULL;
+    VmFunction* function = NULL;
     switch (object->type) {
     case OBJECT_STRING:
         string = (VmString*)object;
-        FREE_ARRAY(char, string->chars, string->length + 1);
-        FREE(VmString, object);
+        vmstring_free(string);
+        break;
+    case OBJECT_FUNCTION:
+        function = (VmFunction*)object;
+        chunk_free(&function->chunk);
+        //vmstring_free(function->name);
+        FREE(VmFunction, function);
+        break;
+    case OBJECT_NATIVE:
+        FREE(VmNative, object);
         break;
     }
 }

@@ -5,19 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(Windows) Attach",
-            "type": "cppvsdbg",
-            "request": "attach",
-            "processId": "${command:pickProcess}"
-        },
-        {
             "name": "(Windows) Debug",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}\\bin\\Debug\\lox.exe",
             "args": [
                 "--vm",
-                "${workspaceFolder}/examples/control-flow.lox",
+                "${workspaceFolder}/examples/fib.lox",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

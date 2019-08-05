@@ -3,12 +3,18 @@
 #include "tokenizer.h"
 #include "vm/common.h"
 #include "vm/table.h"
+#include "vm/value.h"
 #include "vm/vm.h"
 #ifdef DEBUG_PRINT_CODE
 #include "vm/debug.h"
 #endif
 #include <stdio.h>
 #include <string.h>
+
+typedef enum {
+    TYPE_FUNCTION,
+    TYPE_SCRIPT
+} FunctionType;
 
 static void variable(int canAssign);
 static void literal(int canAssign);
@@ -19,6 +25,7 @@ static void unary(int canAssign);
 static void grouping(int canAssign);
 static void _and(int canAssign);
 static void _or(int canAssign);
+static void call(int canAssign);
 static void expression();
 
 static void var_declaration();
@@ -26,6 +33,8 @@ static void declaration();
 static void statement();
 static void print_statement();
 static void expression_statement();
+static void function_statement(FunctionType type);
+static void return_statement();
 
 static int check(TokenType type);
 static int match(TokenType type);
@@ -63,7 +72,7 @@ typedef enum {
 
 typedef void (*ParseFn)(int canAssign);
 
-typedef struct {
+typedef struct parse_rule {
     ParseFn prefix;
     ParseFn infix;
     Precedence precedence;
@@ -74,7 +83,10 @@ typedef struct {
     int depth;
 } Local;
 
-typedef struct Compiler {
+typedef struct vm_compiler {
+    struct vm_compiler* enclosing;
+    VmFunction* function;
+    FunctionType type;
     Local locals[BYTE_COUNT];
     int localCount;
     int scopeDepth;
@@ -83,7 +95,7 @@ typedef struct Compiler {
 static int variable_local_resolve(VmCompiler* compiler, Token* name);
 
 ParseRule rules[] = {
-    { grouping, NULL, PREC_CALL }, // TOKEN_LEFT_PAREN
+    { grouping, call, PREC_CALL }, // TOKEN_LEFT_PAREN
     { NULL, NULL, PREC_NONE }, // TOKEN_RIGHT_PAREN
     { NULL, NULL, PREC_NONE }, // TOKEN_LEFT_BRACE
     { NULL, NULL, PREC_NONE }, // TOKEN_RIGHT_BRACE
@@ -124,8 +136,6 @@ ParseRule rules[] = {
     { NULL, NULL, PREC_NONE }, // TOKEN_ERROR
     { NULL, NULL, PREC_NONE }, // TOKEN_ENDOFFILE
 };
-
-static Chunk* compilingChunk;
 
 static VmParser parser;
 
@@ -276,7 +286,7 @@ static void consume(TokenType type, const char* message)
 
 static Chunk* current_chunk()
 {
-    return compilingChunk;
+    return &currentCompiler->function->chunk;
 }
 
 static void foreach_token(List* toknz, void* toknObj)
@@ -322,6 +332,7 @@ static void emit_constant(Value value)
 
 static void emit_return()
 {
+    emit_byte(OP_NIL);
     emit_byte(OP_RETURN);
 }
 
@@ -360,22 +371,67 @@ static void emit_loop(int loopStart)
     emit_byte(offset & 0xff);
 }
 
-static void compiler_init(VmCompiler* compiler)
+static void compiler_init(VmCompiler* compiler, FunctionType type)
 {
+    Token* token = NULL;
+    Local* local = NULL;
     memset(compiler, 0, sizeof(VmCompiler));
+    compiler->enclosing = currentCompiler;
+    compiler->type = type;
+    compiler->function = NULL;
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
+    compiler->function = vmfunction_new();
+
+    if (type != TYPE_SCRIPT) {
+        token = (Token*)parser.previous->data;
+        compiler->function->name = vmstring_copy(token->lexeme, strlen(token->lexeme));
+    }
     currentCompiler = compiler;
+
+    local = &currentCompiler->locals[currentCompiler->localCount++];
+    local->depth = 0;
+    local->name.lexeme = "";
 }
 
-static void compiler_end()
+static VmFunction* compiler_end()
 {
+    VmFunction* function = NULL;
     emit_return();
+    function = currentCompiler->function;
 #ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
-        chunk_disassemble(current_chunk(), "code");
+        chunk_disassemble(current_chunk(), function->name != NULL ? function->name->chars : "<script>");
     }
 #endif
+
+    currentCompiler = currentCompiler->enclosing;
+
+    return function;
+}
+
+static Byte argument_list()
+{
+    Byte argCount = 0;
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            expression();
+            argCount++;
+        } while (match(TOKEN_COMMA));
+    }
+
+    if (argCount == 255) {
+        error("Cannot have more than 255 arguments.");
+    }
+
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+    return argCount;
+}
+
+static void call(int canAssign)
+{
+    Byte argCount = argument_list();
+    emit_bytes(OP_CALL, argCount);
 }
 
 static void expression()
@@ -411,6 +467,22 @@ static VmObject* new_vmobject(size_t size, VmObjectType type)
 }
 
 #define ALLOC_OBJECT(type, objectType) ((type*)new_vmobject(sizeof(type), (objectType)))
+
+VmFunction* vmfunction_new()
+{
+    VmFunction* function = ALLOC_OBJECT(VmFunction, OBJECT_FUNCTION);
+    function->arity = 0;
+    function->name = NULL;
+    chunk_init(&function->chunk);
+    return function;
+}
+
+VmNative* vmnative_new(NativeFn function)
+{
+    VmNative* native = ALLOC_OBJECT(VmNative, OBJECT_NATIVE);
+    native->function = function;
+    return native;
+}
 
 static Hash hash_string(const char* string, size_t length)
 {
@@ -724,6 +796,21 @@ static void for_statement()
     scope_end();
 }
 
+static void return_statement()
+{
+    if (currentCompiler->type == TYPE_SCRIPT) {
+        error("Cannot return from top-level code.");
+    }
+
+    if (match(TOKEN_SEMICOLON)) {
+        emit_return();
+    } else {
+        expression();
+        consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+        emit_byte(OP_RETURN);
+    }
+}
+
 static void statement()
 {
     if (match(TOKEN_PRINT)) {
@@ -738,6 +825,8 @@ static void statement()
         scope_begin();
         block_statement();
         scope_end();
+    } else if (match(TOKEN_RETURN)) {
+        return_statement();
     } else {
         expression_statement();
     }
@@ -772,7 +861,7 @@ static void variable_define(Byte variableId)
 static int identifier_equal(Token* a, Token* b)
 {
     size_t aLength = a == NULL || a->lexeme == NULL ? 0 : strlen(a->lexeme),
-        bLength = b == NULL || b->lexeme == NULL ? 0 : strlen(b->lexeme);
+           bLength = b == NULL || b->lexeme == NULL ? 0 : strlen(b->lexeme);
     if (aLength != bLength) {
         return 0;
     }
@@ -862,10 +951,54 @@ static void var_declaration()
     variable_define(global);
 }
 
+static void function_statement(FunctionType type)
+{
+    VmCompiler compiler;
+    VmFunction* function = NULL;
+    Byte paramConstant;
+
+    compiler_init(&compiler, type);
+    scope_begin();
+
+    // Compile the parameter list.
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            paramConstant = variable_parse("Expect parameter name.");
+            variable_define(paramConstant);
+
+            currentCompiler->function->arity++;
+            if (currentCompiler->function->arity > 8) {
+                error("Cannot have more than 8 parameters.");
+            }
+
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+
+    // The body.
+    consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+    block_statement();
+
+    // Create the function object.
+    function = compiler_end();
+    emit_bytes(OP_CONSTANT, make_constant(object_val((VmObject*)function)));
+}
+
+static void func_declaration()
+{
+    Byte global = variable_parse("Expect function name.");
+    variable_initialize();
+    function_statement(TYPE_FUNCTION);
+    variable_define(global);
+}
+
 static void declaration()
 {
     if (match(TOKEN_VAR)) {
         var_declaration();
+    } else if (match(TOKEN_FUN)) {
+        func_declaration();
     } else {
         statement();
     }
@@ -875,16 +1008,16 @@ static void declaration()
     }
 }
 
-int compile(const char* code, Chunk* chunk)
+VmFunction* compile(const char* code)
 {
     VmCompiler compiler;
+    VmFunction* function = NULL;
     Tokenization toknz = toknzr(code, 0);
 #ifdef DEBUG_PRINT_CODE
     list_foreach(toknz.values, foreach_token);
 #endif
-    compiler_init(&compiler);
+    compiler_init(&compiler, TYPE_SCRIPT);
 
-    compilingChunk = chunk;
     parser.last = toknz.values->last;
     parser.current = toknz.values->head;
     parser.previous = NULL;
@@ -895,7 +1028,7 @@ int compile(const char* code, Chunk* chunk)
         declaration();
     }
 
-    compiler_end();
+    function = compiler_end();
     toknzr_destroy(toknz);
-    return !parser.hadError;
+    return parser.hadError ? NULL : function;
 }

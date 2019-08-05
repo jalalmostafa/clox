@@ -239,4 +239,6 @@ void run_vm_file(const char* code)
     if (result == INTERPRET_RUNTIME_ERROR) {
         exit(70);
     }
+
+    getchar();
 }

@@ -5,11 +5,18 @@
 #include "vm/table.h"
 #include "vm/value.h"
 
-#define STACK_MAX 256
+#define FRAMES_MAX 64
+#define STACK_MAX (FRAMES_MAX * BYTE_COUNT)
+
+typedef struct call_frame {
+    VmFunction* function;
+    Byte* ip;
+    Value* slots;
+} CallFrame;
 
 typedef struct vm {
-    Chunk* chunk;
-    Byte* ip;
+    CallFrame frames[FRAMES_MAX];
+    int frameCount;
     Value stack[STACK_MAX];
     Value* stackTop;
     Table strings;
